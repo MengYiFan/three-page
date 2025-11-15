@@ -18,7 +18,9 @@ let lastFrameTime = 0;
 let childProgress = 0; // 0~1，表示小人在滑梯上的位置
 let isLoopingSlide = false;
 let currentVisualAngle = 25; // 当前用于渲染滑梯的角度
-const SLIDE_ANIMATION_DURATION = 1600; // 毫秒
+const SLIDE_ANIMATION_MIN_DURATION = 900; // 毫秒，角度大时更快
+const SLIDE_ANIMATION_MAX_DURATION = 2400; // 毫秒，角度小时更慢
+let slideAnimationDuration = SLIDE_ANIMATION_MAX_DURATION;
 
 function initSlideAnglePage() {
   angleElements.difficultyButtons = document.querySelectorAll(
@@ -302,6 +304,7 @@ function startSlideAnimationLoop(angle) {
   currentVisualAngle = angle;
   childProgress = 0;
   isLoopingSlide = true;
+  slideAnimationDuration = calculateSlideDuration(angle);
   lastFrameTime = performance.now();
   if (!slideAnimationFrameId) {
     slideAnimationFrameId = requestAnimationFrame(handleSlideAnimationFrame);
@@ -319,7 +322,7 @@ function handleSlideAnimationFrame(timestamp) {
   lastFrameTime = timestamp;
 
   if (isLoopingSlide) {
-    const delta = dt / SLIDE_ANIMATION_DURATION;
+    const delta = dt / slideAnimationDuration;
     childProgress += delta;
     if (childProgress >= 1) {
       // 到达底部后，从顶部重新开始
@@ -330,6 +333,15 @@ function handleSlideAnimationFrame(timestamp) {
   drawSlideScene(currentVisualAngle, childProgress);
 
   slideAnimationFrameId = requestAnimationFrame(handleSlideAnimationFrame);
+}
+
+function calculateSlideDuration(angle) {
+  const clamped = Math.max(5, Math.min(60, angle || 0));
+  const normalized = (clamped - 5) / 55; // 0 表示最缓，1 表示最陡
+  return (
+    SLIDE_ANIMATION_MAX_DURATION -
+    normalized * (SLIDE_ANIMATION_MAX_DURATION - SLIDE_ANIMATION_MIN_DURATION)
+  );
 }
 
 // 根据当前角度和进度绘制滑梯和人物
@@ -355,6 +367,8 @@ function drawSlideScene(angle, childT) {
   ctx.fillStyle = groundGradient;
   ctx.fillRect(0, h * 0.7, w, h * 0.3);
 
+  drawAngleIndicator(ctx, angle, w, h);
+
   // 计算滑梯几何信息
   const geom = computeSlideGeometry(angle, w, h);
 
@@ -366,6 +380,65 @@ function drawSlideScene(angle, childT) {
 
   // 最后画小人
   drawSlideChild(ctx, geom, childT);
+}
+
+function drawAngleIndicator(ctx, angleDeg, width, height) {
+  const padding = 18;
+  const size = Math.min(width, height) * 0.28;
+  const originX = width - padding - size;
+  const originY = padding + size * 0.1;
+  const axisLength = size;
+
+  ctx.save();
+
+  // 坐标轴：x 轴向右，y 轴向下（与 Canvas 坐标一致）
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(originX + axisLength, originY);
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(originX, originY + axisLength);
+  ctx.stroke();
+
+  ctx.fillStyle = "#555";
+  ctx.font = "11px Sans-Serif";
+  ctx.fillText("x", originX + axisLength + 6, originY + 4);
+  ctx.fillText("y", originX - 10, originY + axisLength + 14);
+
+  // 角度线与弧
+  const rad = (Math.max(0, Math.min(60, angleDeg)) * Math.PI) / 180;
+  const radius = size * 0.85;
+  const endX = originX + Math.cos(rad) * radius;
+  const endY = originY + Math.sin(rad) * radius;
+
+  ctx.strokeStyle = "#0277BD";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(2, 119, 189, 0.5)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(originX, originY, radius * 0.9, 0, rad, false);
+  ctx.stroke();
+
+  ctx.fillStyle = "#01579B";
+  ctx.font = "12px Sans-Serif";
+  const label = `${Math.round(angleDeg)}°`;
+  ctx.fillText(
+    label,
+    originX + Math.cos(rad / 2) * radius * 0.75 - 10,
+    originY + Math.sin(rad / 2) * radius * 0.75 - 6
+  );
+
+  ctx.fillStyle = "#777";
+  ctx.font = "11px Sans-Serif";
+  ctx.textAlign = "center";
+  ctx.fillText("角度示意", originX + axisLength * 0.25, originY - 10);
+  ctx.restore();
 }
 
 // 计算滑梯的起点、终点及宽度等参数
