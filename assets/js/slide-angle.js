@@ -494,81 +494,177 @@ function computeSlideGeometry(angle, w, h) {
 }
 
 function drawSlideTower(ctx, geom) {
-  const { topX, topY, slideLength, canvasWidth, canvasHeight } = geom;
+  const { topX, topY, canvasWidth, canvasHeight, outerWidth } = geom;
   const w = canvasWidth || 320;
   const h = canvasHeight || 240;
+  const groundY = h * 0.68;
 
-  const towerWidth = Math.min(w, h) * 0.18;
-  const towerHeight = h * 0.45;
-  const towerX = topX - towerWidth * 0.35;
-  const towerTopY = topY - towerHeight * 0.2;
-  const towerBottomY = towerTopY + towerHeight;
+  const columnRadius = Math.min(w, h) * 0.09;
+  const columnWidth = columnRadius * 1.45;
+  const columnCenterX = topX - columnRadius * 0.65;
+  const columnTopY = topY - columnRadius * 0.35;
+  const columnBottomY = groundY + columnRadius * 0.35;
 
-  const postWidth = towerWidth * 0.18;
-  const postColor = "#2B1B17";
-  const highlightColor = "#4A342C";
-
-  // 左右立柱
-  ctx.fillStyle = postColor;
-  ctx.fillRect(
-    towerX - towerWidth / 2,
-    towerTopY,
-    postWidth,
-    towerBottomY - towerTopY
+  // 圆柱主体
+  const columnGradient = ctx.createLinearGradient(
+    columnCenterX - columnWidth / 2,
+    columnTopY,
+    columnCenterX + columnWidth / 2,
+    columnBottomY
   );
+  columnGradient.addColorStop(0, "#85C6FF");
+  columnGradient.addColorStop(0.5, "#5BA6F9");
+  columnGradient.addColorStop(1, "#1E6EC5");
+  ctx.fillStyle = columnGradient;
   ctx.fillRect(
-    towerX + towerWidth / 2 - postWidth,
-    towerTopY,
-    postWidth,
-    towerBottomY - towerTopY
+    columnCenterX - columnWidth / 2,
+    columnTopY,
+    columnWidth,
+    columnBottomY - columnTopY
   );
 
-  // 中间支撑
-  ctx.fillRect(
-    towerX - postWidth / 2,
-    towerTopY + towerHeight * 0.3,
-    postWidth,
-    towerHeight * 0.7
+  // 圆柱顶部与底部
+  ctx.fillStyle = "#B5DBFF";
+  ctx.beginPath();
+  ctx.ellipse(
+    columnCenterX,
+    columnTopY,
+    columnWidth / 2,
+    columnWidth * 0.28,
+    0,
+    0,
+    Math.PI * 2
   );
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  ctx.beginPath();
+  ctx.ellipse(
+    columnCenterX,
+    columnBottomY,
+    columnWidth * 0.7,
+    columnWidth * 0.3,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
 
   // 顶部平台
-  ctx.fillStyle = highlightColor;
-  ctx.fillRect(
-    towerX - towerWidth * 0.55,
-    towerTopY - towerHeight * 0.08,
-    towerWidth * 1.1,
-    towerHeight * 0.25
+  const platformHeight = outerWidth * 0.45;
+  const platformLength = Math.max(outerWidth * 2, topX - columnCenterX + outerWidth * 1.1);
+  const platformX = columnCenterX - columnWidth * 0.5;
+  const platformY = columnTopY - platformHeight * 0.25;
+  const platformGradient = ctx.createLinearGradient(
+    platformX,
+    platformY,
+    platformX + platformLength,
+    platformY + platformHeight
   );
+  platformGradient.addColorStop(0, "#A6DBFF");
+  platformGradient.addColorStop(0.6, "#5FAAF6");
+  platformGradient.addColorStop(1, "#347FDF");
 
-  // 平台前缘（给出入口效果）
-  ctx.fillStyle = "#1F120E";
-  ctx.fillRect(
-    towerX - towerWidth * 0.55,
-    towerTopY - towerHeight * 0.08,
-    towerWidth * 0.3,
-    towerHeight * 0.25
+  ctx.fillStyle = platformGradient;
+  ctx.beginPath();
+  ctx.moveTo(platformX, platformY);
+  ctx.lineTo(platformX + platformLength, platformY + platformHeight * 0.15);
+  ctx.lineTo(platformX + platformLength, platformY + platformHeight * 1.1);
+  ctx.quadraticCurveTo(
+    platformX + platformLength * 0.25,
+    platformY + platformHeight * 1.4,
+    platformX,
+    platformY + platformHeight * 1.1
   );
+  ctx.closePath();
+  ctx.fill();
+
+  // 平台高光
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = platformHeight * 0.18;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(platformX + platformLength * 0.1, platformY + platformHeight * 0.2);
+  ctx.lineTo(platformX + platformLength * 0.9, platformY + platformHeight * 0.35);
+  ctx.stroke();
+
+  // 梯子扶手
+  const ladderOuterTop = {
+    x: columnCenterX - columnWidth * 0.85,
+    y: platformY + platformHeight * 0.35
+  };
+  const ladderOuterBottom = {
+    x: ladderOuterTop.x - columnWidth * 0.15,
+    y: columnBottomY - columnWidth * 0.2
+  };
+  const ladderInnerTop = {
+    x: ladderOuterTop.x + columnWidth * 0.35,
+    y: ladderOuterTop.y - platformHeight * 0.05
+  };
+  const ladderInnerBottom = {
+    x: ladderInnerTop.x - columnWidth * 0.1,
+    y: ladderOuterBottom.y
+  };
+
+  const railColor = "#56A9FF";
+  ctx.strokeStyle = railColor;
+  ctx.lineWidth = columnWidth * 0.14;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(ladderOuterTop.x, ladderOuterTop.y);
+  ctx.quadraticCurveTo(
+    ladderOuterTop.x - columnWidth * 0.4,
+    (ladderOuterTop.y + ladderOuterBottom.y) / 2,
+    ladderOuterBottom.x,
+    ladderOuterBottom.y
+  );
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(ladderInnerTop.x, ladderInnerTop.y);
+  ctx.quadraticCurveTo(
+    ladderInnerTop.x - columnWidth * 0.3,
+    (ladderInnerTop.y + ladderInnerBottom.y) / 2,
+    ladderInnerBottom.x,
+    ladderInnerBottom.y
+  );
+  ctx.stroke();
 
   // 梯子横档
-  ctx.fillStyle = highlightColor;
+  ctx.strokeStyle = "#8CC6FF";
+  ctx.lineWidth = columnWidth * 0.08;
+  ctx.lineCap = "round";
   const rungCount = 5;
-  const rungGap = (towerBottomY - (towerTopY + towerHeight * 0.2)) / (rungCount + 1);
-  const rungWidth = towerWidth * 0.9;
-  const rungHeight = postWidth * 0.35;
   for (let i = 1; i <= rungCount; i++) {
-    const y = towerTopY + towerHeight * 0.2 + rungGap * i;
-    ctx.fillRect(towerX - rungWidth / 2, y - rungHeight / 2, rungWidth, rungHeight);
+    const t = i / (rungCount + 1);
+    const outerX =
+      ladderOuterTop.x + (ladderOuterBottom.x - ladderOuterTop.x) * t;
+    const innerX =
+      ladderInnerTop.x + (ladderInnerBottom.x - ladderInnerTop.x) * t;
+    const y =
+      ladderOuterTop.y + (ladderOuterBottom.y - ladderOuterTop.y) * t;
+    ctx.beginPath();
+    ctx.moveTo(outerX, y);
+    ctx.lineTo(innerX, y);
+    ctx.stroke();
   }
 
-  // 阴影支撑
-  ctx.strokeStyle = "#1A0E0B";
-  ctx.lineWidth = postWidth * 0.8;
+  // 平台护栏与滑梯连接
+  ctx.strokeStyle = "#7DB9FF";
+  ctx.lineWidth = columnWidth * 0.08;
   ctx.beginPath();
-  ctx.moveTo(towerX + towerWidth * 0.4, towerTopY + towerHeight * 0.2);
-  ctx.lineTo(
-    towerX + towerWidth * 0.25,
-    towerBottomY + slideLength * 0.05
+  ctx.moveTo(columnCenterX - columnWidth * 0.2, platformY - platformHeight * 0.35);
+  ctx.quadraticCurveTo(
+    columnCenterX - columnWidth * 0.9,
+    platformY - platformHeight * 1.2,
+    ladderOuterTop.x,
+    ladderOuterTop.y
   );
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(columnCenterX + columnWidth * 0.3, platformY - platformHeight * 0.2);
+  ctx.lineTo(topX + outerWidth * 0.5, platformY);
   ctx.stroke();
 }
 
@@ -584,64 +680,124 @@ function drawSlideBody(ctx, geom) {
     innerWidth
   } = geom;
 
-  // 支撑弧
-  ctx.strokeStyle = "rgba(34, 34, 34, 0.2)";
-  ctx.lineWidth = outerWidth * 0.32;
+  // 支撑阴影
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.lineWidth = outerWidth * 0.35;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(topX - outerWidth * 0.2, topY + outerWidth * 0.7);
+  ctx.moveTo(topX - outerWidth * 0.15, topY + outerWidth * 0.65);
   ctx.quadraticCurveTo(
     (topX + bottomX) / 2,
-    (topY + bottomY) / 2 + outerWidth * 1.25,
-    bottomX + outerWidth * 0.35,
-    bottomY + outerWidth * 0.5
+    (topY + bottomY) / 2 + outerWidth * 1.3,
+    bottomX + outerWidth * 0.4,
+    bottomY + outerWidth * 0.55
   );
   ctx.stroke();
 
-  // 滑梯主体（外层）
-  const gradient = ctx.createLinearGradient(topX, topY, bottomX, bottomY);
-  gradient.addColorStop(0, "#8EC5FF");
-  gradient.addColorStop(0.4, "#4FA5F9");
-  gradient.addColorStop(1, "#1565C0");
-  ctx.strokeStyle = gradient;
+  const sampleCount = 28;
+  const samples = [];
+  for (let i = 0; i <= sampleCount; i++) {
+    const t = i / sampleCount;
+    const { x, y, angle } = evaluateSlidePath(geom, t);
+    const nx = -Math.sin(angle);
+    const ny = Math.cos(angle);
+    samples.push({ x, y, nx, ny });
+  }
+
+  const offsetPoints = (distance) =>
+    samples.map((p) => ({
+      x: p.x + p.nx * distance,
+      y: p.y + p.ny * distance
+    }));
+
+  const drawRibbon = (leftPoints, rightPoints, fill) => {
+    if (!leftPoints.length || !rightPoints.length) return;
+    ctx.beginPath();
+    ctx.moveTo(leftPoints[0].x, leftPoints[0].y);
+    for (let i = 1; i < leftPoints.length; i++) {
+      ctx.lineTo(leftPoints[i].x, leftPoints[i].y);
+    }
+    for (let i = rightPoints.length - 1; i >= 0; i--) {
+      ctx.lineTo(rightPoints[i].x, rightPoints[i].y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+  };
+
+  const outerHalf = outerWidth * 0.55;
+  const innerHalf = innerWidth * 0.5;
+  const guardHalf = outerWidth * 0.7;
+
+  const outerLeft = offsetPoints(outerHalf);
+  const outerRight = offsetPoints(-outerHalf);
+  const bodyGradient = ctx.createLinearGradient(topX, topY, bottomX, bottomY);
+  bodyGradient.addColorStop(0, "#9FD8FF");
+  bodyGradient.addColorStop(0.35, "#59A9F2");
+  bodyGradient.addColorStop(1, "#1C62B4");
+  drawRibbon(outerLeft, outerRight, bodyGradient);
+
+  // 滑动面
+  const bedLeft = offsetPoints(innerHalf);
+  const bedRight = offsetPoints(-innerHalf);
+  const bedGradient = ctx.createLinearGradient(topX, topY, bottomX, bottomY);
+  bedGradient.addColorStop(0, "#D8F1FF");
+  bedGradient.addColorStop(1, "#4FA4F7");
+  drawRibbon(bedLeft, bedRight, bedGradient);
+
+  // 护栏
+  const guardLeftOuter = offsetPoints(guardHalf);
+  const guardLeftInner = offsetPoints(outerHalf);
+  const guardRightOuter = offsetPoints(-guardHalf);
+  const guardRightInner = offsetPoints(-outerHalf);
+  const guardGradient = ctx.createLinearGradient(topX, topY, bottomX, bottomY);
+  guardGradient.addColorStop(0, "#7AC5FF");
+  guardGradient.addColorStop(1, "#1D6BC6");
+  drawRibbon(guardLeftOuter, guardLeftInner, guardGradient);
+  drawRibbon(guardRightInner, guardRightOuter, guardGradient);
+
+  // 高光与阴影线
+  ctx.lineWidth = outerWidth * 0.12;
   ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = outerWidth;
+  ctx.strokeStyle = "rgba(255,255,255,0.75)";
   ctx.beginPath();
-  ctx.moveTo(topX, topY);
-  ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, bottomX, bottomY);
+  for (let i = 0; i < guardRightInner.length; i++) {
+    const { x, y } = guardRightInner[i];
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
   ctx.stroke();
 
-  // 入口的圆形衔接，让滑梯看起来更柔和
-  ctx.fillStyle = gradient;
+  ctx.strokeStyle = "rgba(13, 71, 161, 0.3)";
   ctx.beginPath();
-  ctx.arc(topX, topY, outerWidth * 0.55, Math.PI * 0.9, Math.PI * 2.1);
+  for (let i = 0; i < guardLeftInner.length; i++) {
+    const { x, y } = guardLeftInner[i];
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // 底部圆形出口
+  ctx.save();
+  ctx.translate(bottomX, bottomY + outerWidth * 0.02);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, outerWidth * 0.75, outerWidth * 0.32, 0, 0, Math.PI);
+  ctx.fillStyle = "#13519E";
+  ctx.fill();
+  ctx.restore();
+
+  // 入口圆弧
+  ctx.fillStyle = "#8DC9FF";
+  ctx.beginPath();
+  ctx.arc(topX, topY, outerWidth * 0.6, Math.PI * 0.95, Math.PI * 2.05);
   ctx.fill();
 
-  // 内部滑面
-  const innerGradient = ctx.createLinearGradient(topX, topY, bottomX, bottomY);
-  innerGradient.addColorStop(0, "#C5E6FF");
-  innerGradient.addColorStop(1, "#1E88E5");
-  ctx.strokeStyle = innerGradient;
-  ctx.lineWidth = innerWidth;
+  // 滑面中线
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.lineWidth = outerWidth * 0.05;
   ctx.beginPath();
   ctx.moveTo(topX, topY);
   ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, bottomX, bottomY);
-  ctx.stroke();
-
-  // 边缘高光
-  ctx.strokeStyle = "rgba(255,255,255,0.55)";
-  ctx.lineWidth = outerWidth * 0.13;
-  ctx.beginPath();
-  ctx.moveTo(topX, topY - outerWidth * 0.2);
-  ctx.bezierCurveTo(
-    cp1.x,
-    cp1.y - outerWidth * 0.22,
-    cp2.x,
-    cp2.y - outerWidth * 0.12,
-    bottomX,
-    bottomY - outerWidth * 0.08
-  );
   ctx.stroke();
 }
 
@@ -650,39 +806,155 @@ function drawSlideChild(ctx, geom, t) {
   if (!slidePoint) return;
 
   const { x: px, y: py, angle } = slidePoint;
+  const scale = Math.max(0.55, Math.min(1.15, (geom.outerWidth || 45) / 65));
+  const bodyWidth = 24 * scale;
+  const bodyHeight = 30 * scale;
+  const headRadius = 12 * scale;
 
   ctx.save();
   ctx.translate(px, py);
-  ctx.rotate(angle);
+  ctx.rotate(angle - Math.PI / 30);
+  ctx.translate(0, -geom.outerWidth * 0.08);
 
-  // 身体
-  ctx.fillStyle = "#FF7043";
-  ctx.fillRect(-10, -6, 20, 16);
-
-  // 头
+  // 腿与鞋子
+  ctx.strokeStyle = "#FFB74D";
+  ctx.lineCap = "round";
+  ctx.lineWidth = 4 * scale;
   ctx.beginPath();
-  ctx.arc(0, -14, 7, 0, Math.PI * 2);
-  ctx.fillStyle = "#FFCC80";
+  ctx.moveTo(-6 * scale, bodyHeight * 0.1);
+  ctx.lineTo(-2 * scale, bodyHeight * 0.75);
+  ctx.moveTo(8 * scale, bodyHeight * 0.1);
+  ctx.lineTo(12 * scale, bodyHeight * 0.75);
+  ctx.stroke();
+
+  ctx.fillStyle = "#FDD835";
+  ctx.beginPath();
+  ctx.ellipse(-2 * scale, bodyHeight * 0.85, 5 * scale, 3 * scale, Math.PI / 16, 0, Math.PI * 2);
+  ctx.ellipse(12 * scale, bodyHeight * 0.85, 5 * scale, 3 * scale, -Math.PI / 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 连衣裙
+  ctx.fillStyle = "#F8AEDD";
+  ctx.beginPath();
+  ctx.moveTo(-bodyWidth * 0.45, -bodyHeight * 0.1);
+  ctx.lineTo(bodyWidth * 0.45, -bodyHeight * 0.1);
+  ctx.quadraticCurveTo(
+    bodyWidth * 0.75,
+    bodyHeight * 0.6,
+    0,
+    bodyHeight * 0.85
+  );
+  ctx.quadraticCurveTo(
+    -bodyWidth * 0.75,
+    bodyHeight * 0.6,
+    -bodyWidth * 0.45,
+    -bodyHeight * 0.1
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  // 袖口和衣领
+  ctx.fillStyle = "#FCE4EC";
+  ctx.beginPath();
+  ctx.ellipse(0, -bodyHeight * 0.18, bodyWidth * 0.22, bodyHeight * 0.22, 0, 0, Math.PI);
   ctx.fill();
 
   // 手臂
-  ctx.strokeStyle = "#FFCC80";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#F6C7A1";
+  ctx.lineWidth = 4 * scale;
   ctx.beginPath();
-  ctx.moveTo(-8, -4);
-  ctx.lineTo(-14, 4);
-  ctx.moveTo(8, -4);
-  ctx.lineTo(14, 4);
+  ctx.moveTo(-bodyWidth * 0.38, -bodyHeight * 0.05);
+  ctx.lineTo(-bodyWidth * 0.95, bodyHeight * 0.25);
+  ctx.moveTo(bodyWidth * 0.38, -bodyHeight * 0.05);
+  ctx.lineTo(bodyWidth * 0.9, bodyHeight * 0.2);
   ctx.stroke();
 
-  // 腿
-  ctx.strokeStyle = "#5C6BC0";
-  ctx.lineWidth = 3;
+  ctx.fillStyle = "#FFE0B2";
   ctx.beginPath();
-  ctx.moveTo(-4, 10);
-  ctx.lineTo(-8, 18);
-  ctx.moveTo(4, 10);
-  ctx.lineTo(8, 18);
+  ctx.arc(-bodyWidth * 0.96, bodyHeight * 0.25, 3 * scale, 0, Math.PI * 2);
+  ctx.arc(bodyWidth * 0.92, bodyHeight * 0.2, 3 * scale, 0, Math.PI * 2);
+  ctx.fill();
+
+  const headCenterY = -bodyHeight * 0.55;
+
+  // 发型与辫子
+  ctx.fillStyle = "#5C4033";
+  ctx.beginPath();
+  ctx.arc(0, headCenterY - headRadius * 0.45, headRadius * 1.3, Math.PI, Math.PI * 2);
+  ctx.quadraticCurveTo(
+    headRadius * 1.35,
+    headCenterY + headRadius * 0.6,
+    headRadius * 0.45,
+    headCenterY + headRadius * 0.65
+  );
+  ctx.quadraticCurveTo(
+    0,
+    headCenterY + headRadius * 0.75,
+    -headRadius * 0.45,
+    headCenterY + headRadius * 0.65
+  );
+  ctx.quadraticCurveTo(
+    -headRadius * 1.35,
+    headCenterY + headRadius * 0.6,
+    -headRadius * 1.3,
+    headCenterY - headRadius * 0.45
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(-headRadius * 1.2, headCenterY + headRadius * 0.2, headRadius * 0.55, 0, Math.PI * 2);
+  ctx.arc(headRadius * 1.2, headCenterY + headRadius * 0.2, headRadius * 0.55, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#FFD54F";
+  ctx.beginPath();
+  ctx.arc(-headRadius * 1.2, headCenterY + headRadius * 0.05, headRadius * 0.2, 0, Math.PI * 2);
+  ctx.arc(headRadius * 1.2, headCenterY + headRadius * 0.05, headRadius * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 头部
+  ctx.fillStyle = "#FFE0B2";
+  ctx.beginPath();
+  ctx.arc(0, headCenterY, headRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 面部细节
+  ctx.fillStyle = "#3E2723";
+  ctx.beginPath();
+  ctx.arc(-headRadius * 0.35, headCenterY - headRadius * 0.2, headRadius * 0.12, 0, Math.PI * 2);
+  ctx.arc(headRadius * 0.35, headCenterY - headRadius * 0.2, headRadius * 0.12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(-headRadius * 0.35, headCenterY - headRadius * 0.25, headRadius * 0.045, 0, Math.PI * 2);
+  ctx.arc(headRadius * 0.35, headCenterY - headRadius * 0.25, headRadius * 0.045, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#E65100";
+  ctx.lineWidth = 2 * scale;
+  ctx.beginPath();
+  ctx.arc(0, headCenterY - headRadius * 0.05, headRadius * 0.45, Math.PI * 0.2, Math.PI - Math.PI * 0.2);
+  ctx.stroke();
+
+  ctx.fillStyle = "#F06292";
+  ctx.beginPath();
+  ctx.arc(0, headCenterY + headRadius * 0.2, headRadius * 0.35, 0, Math.PI);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(244, 143, 177, 0.4)";
+  ctx.beginPath();
+  ctx.arc(-headRadius * 0.55, headCenterY, headRadius * 0.18, 0, Math.PI * 2);
+  ctx.arc(headRadius * 0.55, headCenterY, headRadius * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 头发高光
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = 2 * scale;
+  ctx.beginPath();
+  ctx.moveTo(-headRadius * 0.7, headCenterY - headRadius * 0.55);
+  ctx.quadraticCurveTo(0, headCenterY - headRadius * 1.05, headRadius * 0.7, headCenterY - headRadius * 0.45);
   ctx.stroke();
 
   ctx.restore();

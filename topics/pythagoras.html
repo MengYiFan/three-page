@@ -7,7 +7,7 @@
     <!-- 复用鸽巢页面的样式，保证整体视觉风格一致 -->
     <link rel="stylesheet" href="../assets/css/pigeonhole.css">
 </head>
-<body>
+<body data-topic="pythagoras">
     <div class="container">
         <header class="page-header">
             <nav class="top-nav">
@@ -104,11 +104,30 @@
                     </p>
                 </div>
             </section>
+
+            <section class="viz-section">
+                <h2>直角三角形动态示意</h2>
+                <div class="viz-card">
+                    <div class="triangle-controls">
+                        <label>水平边 a（米）：
+                            <input type="range" id="tri-base" min="2" max="12" value="3" step="0.5">
+                            <span id="tri-base-value">3</span>
+                        </label>
+                        <label>竖直边 b（米）：
+                            <input type="range" id="tri-height" min="2" max="12" value="4" step="0.5">
+                            <span id="tri-height-value">4</span>
+                        </label>
+                    </div>
+                    <canvas id="pythagoras-canvas" width="420" height="250"></canvas>
+                    <p id="tri-formula" class="viz-note">3² + 4² = 5.00²</p>
+                </div>
+            </section>
         </main>
 
         <footer class="page-footer">
             <p>本页为数学教学示例页面，可配合课堂讲解或自学使用。</p>
         </footer>
     </div>
+    <script src="../assets/js/topic-animations.js"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 # 数学与科学教学静态题库站点
 
 一个用于数学和科学教学的纯静态网页小项目，适合部署在 GitHub Pages 或本地浏览器中直接打开使用。  
-当前包含三个示例题目：鸽巢问题（抽屉原理）、勾股定理应用，以及“角度与滑滑梯的安全性”交互示例。
+目前已扩展十余个经典题目，涵盖平均数、分数、周长面积、滑梯角度、杠杆、水循环、磁铁实验等常见知识点。
 
 ## 目录结构
 
@@ -13,12 +13,23 @@
 │   │   ├── main.css        # 列表页通用样式
 │   │   └── pigeonhole.css  # 题目详情页（鸽巢 / 勾股 / 滑梯角度）通用样式
 │   └── js/
-│       ├── pigeonhole.js   # 鸽巢问题的交互脚本
-│       └── slide-angle.js  # 角度与滑滑梯安全性的交互脚本
+│       ├── pigeonhole.js       # 鸽巢问题的交互脚本
+│       ├── slide-angle.js      # 角度与滑滑梯安全性的交互脚本
+│       └── topic-animations.js # 详情页通用动画脚本（跳绳平均、披萨分数等）
 └── topics/
     ├── pigeonhole.html     # 鸽巢问题交互式练习详情页
     ├── pythagoras.html     # 勾股定理应用详情页
-    └── slide-angle.html    # 角度与滑滑梯安全性交互详情页
+    ├── slide-angle.html    # 角度与滑滑梯安全性交互详情页
+    ├── average-jump.html   # 平均数跳绳动画
+    ├── fractions-pizza.html # 分数披萨示例
+    ├── rectangle-area.html # 草坪周长面积互动
+    ├── lever-balance.html  # 杠杆平衡动画
+    ├── water-cycle.html    # 水循环迷你实验
+    ├── multiplication-arrays.html # 乘法阵列
+    ├── fraction-addition.html     # 分数加法
+    ├── time-conversion.html       # 时间换算
+    ├── magnet-experiment.html     # 磁铁实验
+    └── plant-transpiration.html   # 植物蒸腾
 ```
 
 ## 本地使用方式

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>磁铁与吸引力 - 科学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+</head>
+<body data-topic="magnet-experiment">
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>磁铁的两极与生活应用</h1>
+            <p class="subtitle">“同极相斥，异极相吸”实验</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>实验任务</h2>
+                <div class="explanation-content">
+                    <p>
+                        准备两根条形磁铁、若干回形针、一张纸板和一支记号笔。
+                        按照以下步骤操作：
+                    </p>
+                    <ol>
+                        <li>用纸板挡住磁铁，观察回形针是否仍然被吸起。</li>
+                        <li>把两根磁铁靠近，试着找到“相吸”与“相斥”的方向。</li>
+                        <li>在纸板上画出磁铁的位置，用箭头标记你感受到的力的方向。</li>
+                    </ol>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>相关原理：磁铁的两极</h2>
+                <div class="explanation-content">
+                    <ul>
+                        <li>磁铁有北极（N）和南极（S），N-S 相吸，N-N 或 S-S 相斥。</li>
+                        <li>磁力可以穿过部分非金属材料，如纸板、布料。</li>
+                        <li>磁场方向从北极指向南极，可用箭头表示。</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>观察与思考</h2>
+                <div class="explanation-content">
+                    <p>学生可以记录如下现象：</p>
+                    <ul>
+                        <li>回形针隔着纸板仍被吸住，说明磁力可穿透薄物体。</li>
+                        <li>慢慢旋转磁铁，某些方向会推开彼此，即“同极相斥”。</li>
+                        <li>画图时，可用箭头标记磁铁周围的吸引方向，理解磁力线的概念。</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展讨论</h2>
+                <div class="knowledge-content">
+                    <ul>
+                        <li>生活中有哪些利用磁铁的物品？（磁力贴、扬声器、冰箱门）</li>
+                        <li>尝试用不同材料（塑料/木板/厚书）挡在磁铁与回形针之间，比较磁力大小。</li>
+                        <li>画出自己的“磁场示意图”，将观测到的力的方向用箭头表示。</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="viz-section">
+                <h2>磁场与吸引力示意</h2>
+                <div class="viz-card magnet-sim">
+                    <canvas id="magnet-canvas" width="460" height="220"></canvas>
+                    <div class="magnet-controls">
+                        <label>磁铁组合：
+                            <select id="magnet-mode">
+                                <option value="opposite">异极相吸</option>
+                                <option value="same">同极相斥</option>
+                            </select>
+                        </label>
+                        <label>隔层厚度（毫米）：
+                            <input type="range" id="magnet-barrier" min="0" max="12" value="2">
+                            <span id="magnet-barrier-value">2</span>
+                        </label>
+                    </div>
+                    <p class="viz-note">观察箭头方向与磁场疏密，思考为什么同极推开彼此，隔层越厚吸力越弱。</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>本实验适合小学科学课，强调安全操作与观察记录。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/topic-animations.js"></script>
+</body>
+</html>

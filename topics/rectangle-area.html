@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>长方形周长与面积 - 数学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+</head>
+<body data-topic="rectangle-area">
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>长方形周长与面积复习题</h1>
+            <p class="subtitle">把公式与情境联系起来</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>题目描述</h2>
+                <div class="explanation-content">
+                    <p>
+                        学校准备在操场角落铺一块 <strong>长 12 米、宽 8 米</strong> 的草坪地毯。
+                        需要计算：
+                    </p>
+                    <ol>
+                        <li>草坪的周长是多少，用于围上彩带。</li>
+                        <li>草坪的面积是多少，用于估算需要的草皮块数。</li>
+                    </ol>
+                    <p>请将计算过程写清楚，并说明周长与面积分别代表什么。</p>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>相关原理：长方形公式</h2>
+                <div class="explanation-content">
+                    <ul>
+                        <li>周长 = （长 + 宽） × 2。</li>
+                        <li>面积 = 长 × 宽。</li>
+                        <li>周长描述“边界的总长度”，面积描述“所占的平面大小”。</li>
+                    </ul>
+                    <p>提醒学生注意单位：米用在周长上，平方米用在面积上。</p>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>示例分析</h2>
+                <div class="explanation-content">
+                    <ol>
+                        <li>周长： (12 + 8) × 2 = 20 × 2 = 40（米）。</li>
+                        <li>面积：12 × 8 = 96（平方米）。</li>
+                        <li>可解释为：彩带需要围 40 米；草皮需覆盖 96 平方米。</li>
+                    </ol>
+                    <p class="answer-summary"><strong>周长 40 米，面积 96 平方米。</strong></p>
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展练习</h2>
+                <div class="knowledge-content">
+                    <ul>
+                        <li>若保持面积 96 平方米，尝试列出三组不同的长与宽，它们的周长会怎样变化？</li>
+                        <li>在草坪外再加 1 米宽的防滑道，总面积是多少？提示：求出外层长宽后再计算面积差。</li>
+                        <li>设计一个“长=宽”的正方形草坪，与原长方形比较周长和面积的异同。</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="viz-section">
+                <h2>草坪互动模型</h2>
+                <div class="viz-card">
+                    <div class="rect-playground">
+                        <div class="rect-controls">
+                            <div class="rect-control">
+                                <label for="rect-length">长（米）：</label>
+                                <input type="range" id="rect-length" min="4" max="20" value="12">
+                                <span id="rect-length-value">12</span>
+                            </div>
+                            <div class="rect-control">
+                                <label for="rect-width">宽（米）：</label>
+                                <input type="range" id="rect-width" min="4" max="20" value="8">
+                                <span id="rect-width-value">8</span>
+                            </div>
+                        </div>
+                        <div class="rect-visual-wrapper">
+                            <div class="rect-grid"></div>
+                            <div class="rect-visual" id="rect-visual">12m × 8m</div>
+                        </div>
+                        <div class="rect-output">
+                            <span id="rect-perimeter">周长：40 米</span>
+                            <span id="rect-area">面积：96 平方米</span>
+                        </div>
+                    </div>
+                    <p class="viz-note">拖动滑块观察当长宽变化时，周长与面积如何随之改变，并联想真实铺设材料所需的数量。</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>本题可结合方格纸或电子表格，帮助学生可视化周长与面积。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/topic-animations.js"></script>
+</body>
+</html>

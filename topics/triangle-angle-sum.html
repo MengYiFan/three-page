@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角形内角和拆拼实验 - 数学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+</head>
+<body data-topic="triangle-angle-sum">
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>三角形内角和拆拼实验</h1>
+            <p class="subtitle">用剪、拼、折的方式理解“180°”</p>
+            <p class="author">课堂情境：五年级《三角形内角和》探究课</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>题目描述</h2>
+                <div class="explanation-content">
+                    <p>
+                        小绘正在设计风筝。她知道把三角形的三个角剪下来并排在同一条线上，就能直观发现：
+                        <strong>三角形的三个内角和等于 180°</strong>。请用动画演示这个“拼角”过程，并描述你看到的规律。
+                    </p>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>相关原理</h2>
+                <div class="explanation-content">
+                    <p>
+                        任何三角形都可以看作一个内角和为 180° 的平面图形。证明方式很多：
+                        例如平行线内错角相等、外角与内角互补，或者像本活动一样，把三个角剪下后拼成一条直线。
+                    </p>
+                    <p>
+                        将直线看作 180°，当三个角恰好首尾相接、没有缝隙亦不重叠，就说明它们的度数之和等于 180°。
+                    </p>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>示例分析</h2>
+                <div class="explanation-content">
+                    <ol>
+                        <li>任意画一个三角形，标记三个角。</li>
+                        <li>用画图工具或纸张剪下三个角，依次拼在同一条直线上。</li>
+                        <li>观察拼好后的形状：三个角紧密排成一条直线，说明它们的度数之和是 180°。</li>
+                    </ol>
+                    <p class="answer-summary">因此：<strong>三角形内角和为 180°</strong>，与三角形的大小、形状无关。</p>
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展练习</h2>
+                <div class="knowledge-content">
+                    <ul>
+                        <li>将等腰三角形、直角三角形、钝角三角形分别进行剪拼，比较三个角的大小。</li>
+                        <li>思考：如果把一个四边形剪成两个三角形，能否用“内角和 180°”推出四边形内角和？</li>
+                        <li>尝试用纸折的方式（沿一条边向内对折）证明“外角等于两个不相邻内角之和”。</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="viz-section">
+                <h2>动画演示：剪拼三角形的三个角</h2>
+                <div class="viz-card triangle-lab">
+                    <div class="triangle-stage">
+                        <canvas id="triangle-angle-canvas" width="360" height="260"></canvas>
+                        <div class="triangle-angle-layer" id="triangle-angle-chips"></div>
+                    </div>
+                    <div class="triangle-actions">
+                        <button id="play-angle-fold" class="btn btn-small" type="button">折叠成一条直线</button>
+                        <p id="triangle-angle-caption" class="viz-note">点击按钮，三个角会像拼图一样排成直线。</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>本页可用作探究三角形内角和的课堂演示。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/topic-animations.js"></script>
+</body>
+</html>

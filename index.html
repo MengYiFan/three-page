@@ -41,9 +41,15 @@
                     </p>
                 </header>
 
+                <div class="problem-filter" role="toolbar" aria-label="题目分类筛选">
+                    <button class="filter-btn active" data-filter="all" type="button">全部</button>
+                    <button class="filter-btn" data-filter="math" type="button">数学</button>
+                    <button class="filter-btn" data-filter="science" type="button">科学</button>
+                </div>
+
                 <div class="problem-list">
                     <!-- 示例题目：鸽巢问题 -->
-                    <article class="problem-card">
+                    <article class="problem-card" data-category="math">
                         <div class="problem-meta">
                             <span class="problem-tag math">数学</span>
                         </div>
@@ -57,7 +63,7 @@
                     </article>
 
                     <!-- 示例题目：勾股定理应用 -->
-                    <article class="problem-card">
+                    <article class="problem-card" data-category="math">
                         <div class="problem-meta">
                             <span class="problem-tag math">数学</span>
                         </div>
@@ -71,7 +77,7 @@
                     </article>
 
                     <!-- 示例题目：角度与滑滑梯安全性 -->
-                    <article class="problem-card">
+                    <article class="problem-card" data-category="math">
                         <div class="problem-meta">
                             <span class="problem-tag math">数学</span>
                         </div>
@@ -82,6 +88,258 @@
                             通过自动生成滑梯角度动画与角度输入验证，帮助学生建立“角度大小”与“滑梯安全性”的直观联系。
                         </p>
                         <a class="problem-link" href="topics/slide-angle.html">体验角度与安全等级 →</a>
+                    </article>
+
+                    <!-- 新增：平均数与跳绳 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/average-jump.html">平均数的意义：跳绳训练记录</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过四名同学的跳绳数据引导学生计算平均数，并比较个人成绩与整体水平的关系。
+                        </p>
+                        <a class="problem-link" href="topics/average-jump.html">进入数据统计示例 →</a>
+                    </article>
+
+                    <!-- 新增：分数与披萨分享 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/fractions-pizza.html">分数与披萨分享</a>
+                        </h3>
+                        <p class="problem-desc">
+                            用切分披萨的故事练习等分、通分和比较大小，强化“部分/整体”概念。
+                        </p>
+                        <a class="problem-link" href="topics/fractions-pizza.html">进入分数练习 →</a>
+                    </article>
+
+                    <!-- 新增：长方形周长与面积 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/rectangle-area.html">长方形周长与面积复习题</a>
+                        </h3>
+                        <p class="problem-desc">
+                            草坪铺设案例让学生同时计算周长与面积，并比较不同长宽组合的变化。
+                        </p>
+                        <a class="problem-link" href="topics/rectangle-area.html">查看面积与周长讲解 →</a>
+                    </article>
+
+                    <!-- 新增：杠杆平衡实验 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/lever-balance.html">杠杆原理：撬棒平衡的秘密</a>
+                        </h3>
+                        <p class="problem-desc">
+                            利用木尺和砝码体验“力臂 × 力 = 力矩”，动手寻找省力杠杆的规律。
+                        </p>
+                        <a class="problem-link" href="topics/lever-balance.html">开始杠杆探究 →</a>
+                    </article>
+
+                    <!-- 新增：水循环实验 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/water-cycle.html">水循环与迷你实验</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过密封袋和阳光复现蒸发、凝结、降水三个过程，建立对水循环的整体认识。
+                        </p>
+                        <a class="problem-link" href="topics/water-cycle.html">动手观察水循环 →</a>
+                    </article>
+
+                    <!-- 新增：乘法阵列 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/multiplication-arrays.html">乘法口诀与摆放阵列</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过“几排几列”的鲜花摆放情境，理解乘法口诀和行列互换的意义。
+                        </p>
+                        <a class="problem-link" href="topics/multiplication-arrays.html">进入阵列练习 →</a>
+                    </article>
+
+                    <!-- 新增：分数加法 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/fraction-addition.html">分数加法：蛋糕分享</a>
+                        </h3>
+                        <p class="problem-desc">
+                            在家人分享蛋糕的故事里练习通分、相加与化简，巩固分数加法规则。
+                        </p>
+                        <a class="problem-link" href="topics/fraction-addition.html">查看分数运算示例 →</a>
+                    </article>
+
+                    <!-- 新增：时间换算 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/time-conversion.html">时间单位换算与计划表</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过“阅读马拉松”活动，练习小时与分钟的互换及多天总时长的计算。
+                        </p>
+                        <a class="problem-link" href="topics/time-conversion.html">练习时间换算 →</a>
+                    </article>
+
+                    <!-- 新增：磁铁实验 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/magnet-experiment.html">磁铁的两极与吸引力</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过条形磁铁与回形针实验，验证“同极相斥、异极相吸”以及磁力穿透现象。
+                        </p>
+                        <a class="problem-link" href="topics/magnet-experiment.html">开始磁铁探究 →</a>
+                    </article>
+
+                    <!-- 新增：植物蒸腾 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/plant-transpiration.html">植物蒸腾“出汗”实验</a>
+                        </h3>
+                        <p class="problem-desc">
+                            用塑料袋收集叶片水汽，观察蒸腾作用如何帮助植物运送水分并调节温度。
+                        </p>
+                        <a class="problem-link" href="topics/plant-transpiration.html">观察植物呼吸 →</a>
+                    </article>
+
+                    <!-- 新增：三角形内角和 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/triangle-angle-sum.html">三角形内角和拆拼实验</a>
+                        </h3>
+                        <p class="problem-desc">
+                            用剪拼动画直观呈现“三个角组成 180°”，让学生在动手体验中理解三角形内角和。 
+                        </p>
+                        <a class="problem-link" href="topics/triangle-angle-sum.html">体验拼角动画 →</a>
+                    </article>
+
+                    <!-- 新增：位值拆数机 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/place-value-machine.html">千百十个位拆数机</a>
+                        </h3>
+                        <p class="problem-desc">
+                            拖动滑块拆解四位数，观察“千百十个”位值如何组合成完整数字。
+                        </p>
+                        <a class="problem-link" href="topics/place-value-machine.html">拆解位值 →</a>
+                    </article>
+
+                    <!-- 新增：概率转盘 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/probability-spinner.html">幸运转盘与概率频率</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过转动彩色转盘记录频率，体验“份数越多，概率越大”的统计规律。
+                        </p>
+                        <a class="problem-link" href="topics/probability-spinner.html">转动转盘 →</a>
+                    </article>
+
+                    <!-- 新增：速度跑道 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/speed-distance.html">速度 = 距离 ÷ 时间</a>
+                        </h3>
+                        <p class="problem-desc">
+                            设置距离与时间，观看小车匀速前进，巩固速度公式与生活应用。
+                        </p>
+                        <a class="problem-link" href="topics/speed-distance.html">进入跑道实验 →</a>
+                    </article>
+
+                    <!-- 新增：轴对称折纸 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/symmetry-folding.html">轴对称折纸实验</a>
+                        </h3>
+                        <p class="problem-desc">
+                            模拟折纸过程，观察叶子、风筝、蝴蝶左右重合，理解对称轴概念。
+                        </p>
+                        <a class="problem-link" href="topics/symmetry-folding.html">折一折看对称 →</a>
+                    </article>
+
+                    <!-- 新增：行星公转 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/planet-orbits.html">行星绕日公转示意</a>
+                        </h3>
+                        <p class="problem-desc">
+                            动态轨道展示水星至火星的速度差异，帮助理解公转周期与距离的关系。
+                        </p>
+                        <a class="problem-link" href="topics/planet-orbits.html">观看轨道动画 →</a>
+                    </article>
+
+                    <!-- 新增：声波振幅频率 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/sound-waves.html">声波的振幅与频率</a>
+                        </h3>
+                        <p class="problem-desc">
+                            可调节的波形展示音调与响度的成因，连接乐器与声音实验。
+                        </p>
+                        <a class="problem-link" href="topics/sound-waves.html">调节声波 →</a>
+                    </article>
+
+                    <!-- 新增：固液气粒子 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/particle-states.html">固液气粒子运动</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过粒子运动模拟对比固态振动、液态滑动、气态自由碰撞的不同状态。
+                        </p>
+                        <a class="problem-link" href="topics/particle-states.html">观察粒子世界 →</a>
                     </article>
 
                     <!-- 在此区域继续添加新的教学题目卡片 -->
@@ -95,5 +353,32 @@
             </p>
         </footer>
     </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const buttons = document.querySelectorAll(".filter-btn");
+        const cards = document.querySelectorAll(".problem-card");
+        let currentFilter = "all";
+
+        const applyFilter = (filter) => {
+          cards.forEach((card) => {
+            const category = card.dataset.category || "math";
+            const match = filter === "all" || category === filter;
+            card.classList.toggle("is-hidden", !match);
+          });
+        };
+
+        buttons.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const filter = btn.dataset.filter;
+            if (!filter || filter === currentFilter) return;
+            currentFilter = filter;
+            buttons.forEach((b) => b.classList.toggle("active", b === btn));
+            applyFilter(filter);
+          });
+        });
+
+        applyFilter(currentFilter);
+      });
+    </script>
 </body>
 </html>
