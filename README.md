@@ -1,7 +1,7 @@
 # 数学与科学教学静态题库站点
 
 一个用于数学和科学教学的纯静态网页小项目，适合部署在 GitHub Pages 或本地浏览器中直接打开使用。  
-当前包含两个示例题目：鸽巢问题（抽屉原理）与勾股定理应用。
+当前包含三个示例题目：鸽巢问题（抽屉原理）、勾股定理应用，以及“角度与滑滑梯的安全性”交互示例。
 
 ## 目录结构
 
@@ -11,12 +11,14 @@
 ├── assets/
 │   ├── css/
 │   │   ├── main.css        # 列表页通用样式
-│   │   └── pigeonhole.css  # 题目详情页（鸽巢 / 勾股）通用样式
+│   │   └── pigeonhole.css  # 题目详情页（鸽巢 / 勾股 / 滑梯角度）通用样式
 │   └── js/
-│       └── pigeonhole.js   # 鸽巢问题的交互脚本
+│       ├── pigeonhole.js   # 鸽巢问题的交互脚本
+│       └── slide-angle.js  # 角度与滑滑梯安全性的交互脚本
 └── topics/
     ├── pigeonhole.html     # 鸽巢问题交互式练习详情页
-    └── pythagoras.html     # 勾股定理应用详情页
+    ├── pythagoras.html     # 勾股定理应用详情页
+    └── slide-angle.html    # 角度与滑滑梯安全性交互详情页
 ```
 
 ## 本地使用方式
@@ -65,4 +67,3 @@
   - 在对应的 `topics/your-topic.html` 中通过 `<script src="../assets/js/your-topic.js"></script>` 引入。
 
 欢迎根据课程需要继续扩展新的数学和科学教学题目。
-
