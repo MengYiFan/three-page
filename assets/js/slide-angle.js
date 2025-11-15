@@ -1,4 +1,4 @@
-// 角度与滑滑梯安全性交互脚本
+// 角度与滑滑梯安全性交互脚本（Canvas 版）
 
 const slideAngleState = {
   currentDifficulty: null,
@@ -7,9 +7,18 @@ const slideAngleState = {
 
 const angleElements = {};
 
-let slideCanvasContext = null;
+// Canvas 及动画相关
+let slideCanvas = null;
+let slideCtx = null;
+let canvasWidth = 0;
+let canvasHeight = 0;
+
 let slideAnimationFrameId = null;
-let slideAnimationProgress = 0;
+let lastFrameTime = 0;
+let childProgress = 0; // 0~1，表示小人在滑梯上的位置
+let isLoopingSlide = false;
+let currentVisualAngle = 25; // 当前用于渲染滑梯的角度
+const SLIDE_ANIMATION_DURATION = 1600; // 毫秒
 
 function initSlideAnglePage() {
   angleElements.difficultyButtons = document.querySelectorAll(
@@ -18,7 +27,7 @@ function initSlideAnglePage() {
   angleElements.difficultySelect =
     document.getElementById("difficulty-select");
   angleElements.generateButton = document.getElementById("generate-angle");
-  angleElements.slideCanvas = document.getElementById("slide-canvas");
+  angleElements.slideContainer = document.getElementById("slide-canvas");
   angleElements.currentAngleValue =
     document.getElementById("current-angle-value");
   angleElements.currentAngleLevel =
@@ -30,8 +39,15 @@ function initSlideAnglePage() {
     "angle-safety-detail"
   );
 
-  if (angleElements.slideCanvas) {
-    slideCanvasContext = angleElements.slideCanvas.getContext("2d");
+  slideCanvas = document.getElementById("slide-canvas");
+  if (slideCanvas && slideCanvas.getContext) {
+    slideCtx = slideCanvas.getContext("2d");
+    setupSlideCanvasSize();
+    window.addEventListener("resize", () => {
+      setupSlideCanvasSize();
+      // 尺寸变化后重新绘制当前状态
+      drawSlideScene(currentVisualAngle, isLoopingSlide ? childProgress : 0);
+    });
   }
 
   setupSlideAngleListeners();
@@ -39,8 +55,20 @@ function initSlideAnglePage() {
     angleElements.generateButton.disabled = true;
   }
 
-  // 初始绘制一个默认角度的滑梯和小人
+  // 初始静态展示一个适中角度的滑梯
   drawSlideScene(25, 0);
+}
+
+function setupSlideCanvasSize() {
+  if (!slideCanvas || !slideCtx) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = slideCanvas.getBoundingClientRect();
+  canvasWidth = rect.width || 320;
+  canvasHeight = rect.height || 240;
+
+  slideCanvas.width = canvasWidth * dpr;
+  slideCanvas.height = canvasHeight * dpr;
+  slideCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 function setupSlideAngleListeners() {
@@ -122,7 +150,9 @@ function resetAngleDemo() {
     angleElements.angleInput.value = "";
   }
 
-  // 恢复默认展示角度但不显示具体数值
+  stopSlideAnimationLoop();
+  currentVisualAngle = 25;
+  childProgress = 0;
   drawSlideScene(25, 0);
 }
 
@@ -136,7 +166,9 @@ function generateAngleDemo() {
 
   const safety = classifyAngle(angle);
   updateSafetyBadge(safety, angleElements.currentAngleLevel);
-  triggerSlideAnimation();
+
+  // 点击“生成滑滑梯角度演示”时，自动开始并循环小人滑下的动画
+  startSlideAnimationLoop(angle);
 }
 
 function createRandomAngle(level) {
@@ -157,7 +189,8 @@ function randomInRange(min, max) {
 }
 
 function updateSlideVisual(angle) {
-  drawSlideScene(angle, 0);
+  currentVisualAngle = angle;
+  drawSlideScene(angle, isLoopingSlide ? childProgress : 0);
   if (angleElements.currentAngleValue) {
     angleElements.currentAngleValue.textContent = String(angle);
   }
@@ -204,7 +237,8 @@ function classifyAngle(angle) {
       id: "invalid",
       label: "不合理角度",
       className: "safety-invalid",
-      summary: "请输入 5° 到 60° 范围内的角度，便于讨论实际滑梯情况。",
+      summary:
+        "请输入 5° 到 60° 范围内的角度，便于讨论实际滑梯情况。",
       tip: "在现实生活中，滑梯不会完全水平（0°），也不会接近竖直（90°）。"
     };
   }
@@ -238,6 +272,8 @@ function handleAngleSubmit() {
   if (safety.id === "invalid") {
     angleElements.angleFeedback.textContent = safety.label + "：请重新输入角度。";
     angleElements.angleFeedback.className = "feedback incorrect";
+    stopSlideAnimationLoop();
+    drawSlideScene(currentVisualAngle, 0);
   } else {
     angleElements.angleFeedback.textContent = `你输入的角度为 ${value}°，系统判断为：${safety.label}`;
     angleElements.angleFeedback.className =
@@ -245,7 +281,8 @@ function handleAngleSubmit() {
 
     slideAngleState.currentAngle = value;
     updateSlideVisual(value);
-    triggerSlideAnimation();
+    // 输入角度后也播放并循环滑动动画
+    startSlideAnimationLoop(value);
   }
 
   angleElements.angleSafetyDetail.innerHTML = `
@@ -258,243 +295,359 @@ function handleAngleSubmit() {
   updateSafetyBadge(safety, angleElements.currentAngleLevel);
 }
 
-function clearSlideCanvas() {
-  if (!slideCanvasContext || !angleElements.slideCanvas) return;
-  slideCanvasContext.clearRect(
-    0,
-    0,
-    angleElements.slideCanvas.width,
-    angleElements.slideCanvas.height
-  );
+// ===== Canvas 动画：小人沿滑梯从上滑到底，并循环 =====
+
+function startSlideAnimationLoop(angle) {
+  if (!slideCtx) return;
+  currentVisualAngle = angle;
+  childProgress = 0;
+  isLoopingSlide = true;
+  lastFrameTime = performance.now();
+  if (!slideAnimationFrameId) {
+    slideAnimationFrameId = requestAnimationFrame(handleSlideAnimationFrame);
+  }
 }
 
-// 使用 canvas 绘制滑梯、地面和小人
-// childProgress 取值 0~1，表示小人在滑梯上的位置（0 在顶端，1 在底端）
-function drawSlideScene(angle, childProgress) {
-  if (!slideCanvasContext || !angleElements.slideCanvas) return;
-
-  const ctx = slideCanvasContext;
-  const canvas = angleElements.slideCanvas;
-  const width = canvas.width;
-  const height = canvas.height;
-
-  clearSlideCanvas();
-
-  // 背景天空和草地
-  const groundHeight = 32;
-  const skyHeight = height - groundHeight;
-
-  const skyGradient = ctx.createLinearGradient(0, 0, 0, skyHeight);
-  skyGradient.addColorStop(0, "#bbdefb");
-  skyGradient.addColorStop(1, "#e3f2fd");
-  ctx.fillStyle = skyGradient;
-  ctx.fillRect(0, 0, width, skyHeight);
-
-  const groundGradient = ctx.createLinearGradient(
-    0,
-    skyHeight,
-    0,
-    height
-  );
-  groundGradient.addColorStop(0, "#c8e6c9");
-  groundGradient.addColorStop(1, "#a5d6a7");
-  ctx.fillStyle = groundGradient;
-  ctx.fillRect(0, skyHeight, width, height - skyHeight);
-
-  // 地面阴影
-  ctx.fillStyle = "#6d4c41";
-  ctx.fillRect(0, height - groundHeight, width, groundHeight);
-
-  // 滑梯参数（尽量像真实游乐场滑梯）
-  const baseX = 190; // 滑梯落地位置（靠右）
-  const baseY = height - groundHeight - 2;
-  const slideLength = 130;
-  const rad = (Math.max(5, Math.min(60, angle)) * Math.PI) / 180;
-
-  // 滑梯顶部在左侧，高于地面
-  const topX = baseX - slideLength * Math.cos(rad);
-  const topY = baseY - slideLength * Math.sin(rad);
-
-  // 滑梯方向与法线
-  const dx = baseX - topX;
-  const dy = baseY - topY;
-  const len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
-  const ux = dx / len;
-  const uy = dy / len;
-  const nx = -uy;
-  const ny = ux;
-
-  // 平台和支撑柱（小塔）
-  const platformWidth = 60;
-  const platformHeight = 10;
-  const platformX = topX - platformWidth * 0.4;
-  const platformY = topY - platformHeight;
-  ctx.fillStyle = "#546e7a";
-  ctx.fillRect(platformX, platformY, platformWidth, platformHeight);
-
-  // 塔身
-  ctx.fillStyle = "#8d6e63";
-  const towerWidth = 28;
-  const towerHeight = 70;
-  ctx.fillRect(
-    platformX + platformWidth * 0.15,
-    platformY,
-    towerWidth,
-    towerHeight
-  );
-
-  // 梯子（竖直加横档）
-  const ladderX = platformX + platformWidth * 0.15 + towerWidth + 6;
-  const ladderTopY = platformY + 4;
-  const ladderBottomY = ladderTopY + towerHeight - 8;
-  ctx.fillStyle = "#8d6e63";
-  ctx.fillRect(ladderX, ladderTopY, 6, ladderBottomY - ladderTopY);
-
-  ctx.strokeStyle = "#bcaaa4";
-  ctx.lineWidth = 2;
-  const rungCount = 4;
-  for (let i = 0; i <= rungCount; i++) {
-    const y =
-      ladderTopY + ((ladderBottomY - ladderTopY) * i) / rungCount;
-    ctx.beginPath();
-    ctx.moveTo(ladderX - 8, y);
-    ctx.lineTo(ladderX + 12, y);
-    ctx.stroke();
-  }
-
-  // 滑梯板（有厚度和护栏）
-  const boardHalfThickness = 6;
-  const topLeftX = topX + nx * boardHalfThickness;
-  const topLeftY = topY + ny * boardHalfThickness;
-  const topRightX = topX - nx * boardHalfThickness;
-  const topRightY = topY - ny * boardHalfThickness;
-  const bottomLeftX = baseX + nx * boardHalfThickness;
-  const bottomLeftY = baseY + ny * boardHalfThickness;
-  const bottomRightX = baseX - nx * boardHalfThickness;
-  const bottomRightY = baseY - ny * boardHalfThickness;
-
-  const slideGradient = ctx.createLinearGradient(
-    topLeftX,
-    topLeftY,
-    bottomRightX,
-    bottomRightY
-  );
-  slideGradient.addColorStop(0, "#ffcc80");
-  slideGradient.addColorStop(1, "#ffb74d");
-  ctx.fillStyle = slideGradient;
-  ctx.beginPath();
-  ctx.moveTo(topLeftX, topLeftY);
-  ctx.lineTo(bottomLeftX, bottomLeftY);
-  ctx.lineTo(bottomRightX, bottomRightY);
-  ctx.lineTo(topRightX, topRightY);
-  ctx.closePath();
-  ctx.fill();
-
-  // 两侧护栏线
-  ctx.strokeStyle = "#ffb74d";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(topLeftX, topLeftY - 4);
-  ctx.lineTo(bottomLeftX, bottomLeftY - 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(topRightX, topRightY - 4);
-  ctx.lineTo(bottomRightX, bottomRightY - 2);
-  ctx.stroke();
-
-  // 角度指示圆圈和文字 θ
-  const angleCenterX = baseX - 8;
-  const angleCenterY = baseY - 14;
-  ctx.beginPath();
-  ctx.arc(angleCenterX, angleCenterY, 12, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(33,150,243,0.8)";
-  ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "rgba(255,255,255,0.9)";
-  ctx.stroke();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 12px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("θ", angleCenterX, angleCenterY);
-
-  // 小人：沿滑梯线段移动
-  const t = Math.max(0, Math.min(1, childProgress));
-  const personX = topX + (baseX - topX) * t;
-  const personY = topY + (baseY - topY) * t;
-
-  // 头
-  ctx.beginPath();
-  ctx.arc(personX, personY - 10, 6, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffcc80";
-  ctx.fill();
-  ctx.strokeStyle = "#f57c00";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // 身体
-  ctx.strokeStyle = "#ff7043";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(personX, personY - 4);
-  ctx.lineTo(personX, personY + 8);
-  ctx.stroke();
-
-  // 手臂
-  const armOffset = 5;
-  ctx.beginPath();
-  ctx.moveTo(personX, personY);
-  ctx.lineTo(personX - armOffset, personY + 4);
-  ctx.moveTo(personX, personY);
-  ctx.lineTo(personX + armOffset, personY + 4);
-  ctx.stroke();
-
-  // 腿
-  ctx.beginPath();
-  ctx.moveTo(personX, personY + 8);
-  ctx.lineTo(personX - armOffset, personY + 16);
-  ctx.moveTo(personX, personY + 8);
-  ctx.lineTo(personX + armOffset, personY + 16);
-  ctx.stroke();
+function stopSlideAnimationLoop() {
+  isLoopingSlide = false;
 }
 
-function startSlideAnimation(angle) {
-  if (!slideCanvasContext) return;
+function handleSlideAnimationFrame(timestamp) {
+  if (!slideCtx) return;
 
-  if (slideAnimationFrameId !== null) {
-    cancelAnimationFrame(slideAnimationFrameId);
-    slideAnimationFrameId = null;
-  }
+  const dt = timestamp - lastFrameTime;
+  lastFrameTime = timestamp;
 
-  const duration = 900; // 毫秒
-  let startTime = null;
-
-  function step(timestamp) {
-    if (!startTime) startTime = timestamp;
-    const elapsed = timestamp - startTime;
-    const progress = Math.min(1, elapsed / duration);
-
-    // 使用缓动函数让动画更自然
-    const easeOut = 1 - Math.pow(1 - progress, 3);
-    slideAnimationProgress = easeOut;
-
-    drawSlideScene(angle, slideAnimationProgress);
-
-    if (progress < 1) {
-      slideAnimationFrameId = requestAnimationFrame(step);
-    } else {
-      slideAnimationFrameId = null;
+  if (isLoopingSlide) {
+    const delta = dt / SLIDE_ANIMATION_DURATION;
+    childProgress += delta;
+    if (childProgress >= 1) {
+      // 到达底部后，从顶部重新开始
+      childProgress -= 1;
     }
   }
 
-  slideAnimationProgress = 0;
-  slideAnimationFrameId = requestAnimationFrame(step);
+  drawSlideScene(currentVisualAngle, childProgress);
+
+  slideAnimationFrameId = requestAnimationFrame(handleSlideAnimationFrame);
 }
 
-function triggerSlideAnimation() {
-  const angle =
-    slideAngleState.currentAngle != null ? slideAngleState.currentAngle : 25;
-  startSlideAnimation(angle);
+// 根据当前角度和进度绘制滑梯和人物
+function drawSlideScene(angle, childT) {
+  if (!slideCtx) return;
+
+  const ctx = slideCtx;
+  const w = canvasWidth || slideCanvas.width;
+  const h = canvasHeight || slideCanvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // 背景：天空 + 草地
+  const skyGradient = ctx.createLinearGradient(0, 0, 0, h * 0.7);
+  skyGradient.addColorStop(0, "#bbdefb");
+  skyGradient.addColorStop(1, "#e3f2fd");
+  ctx.fillStyle = skyGradient;
+  ctx.fillRect(0, 0, w, h * 0.7);
+
+  const groundGradient = ctx.createLinearGradient(0, h * 0.7, 0, h);
+  groundGradient.addColorStop(0, "#c8e6c9");
+  groundGradient.addColorStop(1, "#a5d6a7");
+  ctx.fillStyle = groundGradient;
+  ctx.fillRect(0, h * 0.7, w, h * 0.3);
+
+  // 计算滑梯几何信息
+  const geom = computeSlideGeometry(angle, w, h);
+
+  // 先画滑梯所在的塔、梯子、平台
+  drawSlideTower(ctx, geom);
+
+  // 再画滑梯本体
+  drawSlideBody(ctx, geom);
+
+  // 最后画小人
+  drawSlideChild(ctx, geom, childT);
+}
+
+// 计算滑梯的起点、终点及宽度等参数
+function computeSlideGeometry(angle, w, h) {
+  const width = w || canvasWidth || 320;
+  const height = h || canvasHeight || 240;
+
+  const clamped = Math.max(5, Math.min(60, angle || 0));
+  const rad = (clamped * Math.PI) / 180;
+  const normalized = Math.max(0, Math.min(1, (clamped - 5) / 55));
+
+  const groundY = height * 0.68;
+
+  // 塔在画面的左侧，滑梯向右下延伸
+  const topX = width * 0.32;
+  const topY = height * 0.28;
+
+  // 底部始终落在地面附近，随着角度变化调整水平位置，角度越小越向右
+  const bottomX = Math.max(
+    topX + width * 0.2,
+    width * (0.65 + (1 - normalized) * 0.2)
+  );
+  const bottomY = groundY;
+
+  const outerWidth = Math.min(width, height) * 0.16;
+  const innerWidth = outerWidth * 0.65;
+
+  // 控制点：第一段服从角度方向，第二段在落地前略微抬起形成优雅曲线
+  const cp1Distance = width * (0.22 + (1 - normalized) * 0.08);
+  const cp1 = {
+    x: topX + Math.cos(rad) * cp1Distance,
+    y: topY + Math.sin(rad) * cp1Distance + height * 0.02
+  };
+  const cp2 = {
+    x: bottomX - width * (0.2 - 0.08 * normalized),
+    y: bottomY - height * (0.08 + 0.12 * normalized)
+  };
+
+  return {
+    angleDeg: clamped,
+    topX,
+    topY,
+    cp1,
+    cp2,
+    bottomX,
+    bottomY,
+    outerWidth,
+    innerWidth,
+    slideLength: Math.hypot(bottomX - topX, bottomY - topY),
+    canvasWidth: width,
+    canvasHeight: height
+  };
+}
+
+function drawSlideTower(ctx, geom) {
+  const { topX, topY, slideLength, canvasWidth, canvasHeight } = geom;
+  const w = canvasWidth || 320;
+  const h = canvasHeight || 240;
+
+  const towerWidth = Math.min(w, h) * 0.18;
+  const towerHeight = h * 0.45;
+  const towerX = topX - towerWidth * 0.35;
+  const towerTopY = topY - towerHeight * 0.2;
+  const towerBottomY = towerTopY + towerHeight;
+
+  const postWidth = towerWidth * 0.18;
+  const postColor = "#2B1B17";
+  const highlightColor = "#4A342C";
+
+  // 左右立柱
+  ctx.fillStyle = postColor;
+  ctx.fillRect(
+    towerX - towerWidth / 2,
+    towerTopY,
+    postWidth,
+    towerBottomY - towerTopY
+  );
+  ctx.fillRect(
+    towerX + towerWidth / 2 - postWidth,
+    towerTopY,
+    postWidth,
+    towerBottomY - towerTopY
+  );
+
+  // 中间支撑
+  ctx.fillRect(
+    towerX - postWidth / 2,
+    towerTopY + towerHeight * 0.3,
+    postWidth,
+    towerHeight * 0.7
+  );
+
+  // 顶部平台
+  ctx.fillStyle = highlightColor;
+  ctx.fillRect(
+    towerX - towerWidth * 0.55,
+    towerTopY - towerHeight * 0.08,
+    towerWidth * 1.1,
+    towerHeight * 0.25
+  );
+
+  // 平台前缘（给出入口效果）
+  ctx.fillStyle = "#1F120E";
+  ctx.fillRect(
+    towerX - towerWidth * 0.55,
+    towerTopY - towerHeight * 0.08,
+    towerWidth * 0.3,
+    towerHeight * 0.25
+  );
+
+  // 梯子横档
+  ctx.fillStyle = highlightColor;
+  const rungCount = 5;
+  const rungGap = (towerBottomY - (towerTopY + towerHeight * 0.2)) / (rungCount + 1);
+  const rungWidth = towerWidth * 0.9;
+  const rungHeight = postWidth * 0.35;
+  for (let i = 1; i <= rungCount; i++) {
+    const y = towerTopY + towerHeight * 0.2 + rungGap * i;
+    ctx.fillRect(towerX - rungWidth / 2, y - rungHeight / 2, rungWidth, rungHeight);
+  }
+
+  // 阴影支撑
+  ctx.strokeStyle = "#1A0E0B";
+  ctx.lineWidth = postWidth * 0.8;
+  ctx.beginPath();
+  ctx.moveTo(towerX + towerWidth * 0.4, towerTopY + towerHeight * 0.2);
+  ctx.lineTo(
+    towerX + towerWidth * 0.25,
+    towerBottomY + slideLength * 0.05
+  );
+  ctx.stroke();
+}
+
+function drawSlideBody(ctx, geom) {
+  const {
+    topX,
+    topY,
+    cp1,
+    cp2,
+    bottomX,
+    bottomY,
+    outerWidth,
+    innerWidth
+  } = geom;
+
+  // 支撑弧
+  ctx.strokeStyle = "rgba(34, 34, 34, 0.2)";
+  ctx.lineWidth = outerWidth * 0.32;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(topX - outerWidth * 0.2, topY + outerWidth * 0.7);
+  ctx.quadraticCurveTo(
+    (topX + bottomX) / 2,
+    (topY + bottomY) / 2 + outerWidth * 1.25,
+    bottomX + outerWidth * 0.35,
+    bottomY + outerWidth * 0.5
+  );
+  ctx.stroke();
+
+  // 滑梯主体（外层）
+  const gradient = ctx.createLinearGradient(topX, topY, bottomX, bottomY);
+  gradient.addColorStop(0, "#8EC5FF");
+  gradient.addColorStop(0.4, "#4FA5F9");
+  gradient.addColorStop(1, "#1565C0");
+  ctx.strokeStyle = gradient;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = outerWidth;
+  ctx.beginPath();
+  ctx.moveTo(topX, topY);
+  ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, bottomX, bottomY);
+  ctx.stroke();
+
+  // 入口的圆形衔接，让滑梯看起来更柔和
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(topX, topY, outerWidth * 0.55, Math.PI * 0.9, Math.PI * 2.1);
+  ctx.fill();
+
+  // 内部滑面
+  const innerGradient = ctx.createLinearGradient(topX, topY, bottomX, bottomY);
+  innerGradient.addColorStop(0, "#C5E6FF");
+  innerGradient.addColorStop(1, "#1E88E5");
+  ctx.strokeStyle = innerGradient;
+  ctx.lineWidth = innerWidth;
+  ctx.beginPath();
+  ctx.moveTo(topX, topY);
+  ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, bottomX, bottomY);
+  ctx.stroke();
+
+  // 边缘高光
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = outerWidth * 0.13;
+  ctx.beginPath();
+  ctx.moveTo(topX, topY - outerWidth * 0.2);
+  ctx.bezierCurveTo(
+    cp1.x,
+    cp1.y - outerWidth * 0.22,
+    cp2.x,
+    cp2.y - outerWidth * 0.12,
+    bottomX,
+    bottomY - outerWidth * 0.08
+  );
+  ctx.stroke();
+}
+
+function drawSlideChild(ctx, geom, t) {
+  const slidePoint = evaluateSlidePath(geom, Math.max(0, Math.min(1, t || 0)));
+  if (!slidePoint) return;
+
+  const { x: px, y: py, angle } = slidePoint;
+
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(angle);
+
+  // 身体
+  ctx.fillStyle = "#FF7043";
+  ctx.fillRect(-10, -6, 20, 16);
+
+  // 头
+  ctx.beginPath();
+  ctx.arc(0, -14, 7, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFCC80";
+  ctx.fill();
+
+  // 手臂
+  ctx.strokeStyle = "#FFCC80";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-8, -4);
+  ctx.lineTo(-14, 4);
+  ctx.moveTo(8, -4);
+  ctx.lineTo(14, 4);
+  ctx.stroke();
+
+  // 腿
+  ctx.strokeStyle = "#5C6BC0";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-4, 10);
+  ctx.lineTo(-8, 18);
+  ctx.moveTo(4, 10);
+  ctx.lineTo(8, 18);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function evaluateSlidePath(geom, t) {
+  const { topX, topY, cp1, cp2, bottomX, bottomY } = geom;
+  const progress = Math.max(0, Math.min(1, t || 0));
+
+  const x = cubicAt(topX, cp1.x, cp2.x, bottomX, progress);
+  const y = cubicAt(topY, cp1.y, cp2.y, bottomY, progress);
+  const dx = cubicDerivativeAt(topX, cp1.x, cp2.x, bottomX, progress);
+  const dy = cubicDerivativeAt(topY, cp1.y, cp2.y, bottomY, progress);
+
+  return {
+    x,
+    y,
+    angle: Math.atan2(dy, dx)
+  };
+}
+
+function cubicAt(p0, p1, p2, p3, t) {
+  const mt = 1 - t;
+  return (
+    mt * mt * mt * p0 +
+    3 * mt * mt * t * p1 +
+    3 * mt * t * t * p2 +
+    t * t * t * p3
+  );
+}
+
+function cubicDerivativeAt(p0, p1, p2, p3, t) {
+  const mt = 1 - t;
+  return (
+    3 * mt * mt * (p1 - p0) +
+    6 * mt * t * (p2 - p1) +
+    3 * t * t * (p3 - p2)
+  );
 }
 
 document.addEventListener("DOMContentLoaded", initSlideAnglePage);
