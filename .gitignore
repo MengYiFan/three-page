@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Node / 前端常见目录（即使当前项目未使用，也可预防性忽略）
+node_modules/
+dist/
+build/
+
+# 编辑器配置
+.vscode/
+.idea/
+

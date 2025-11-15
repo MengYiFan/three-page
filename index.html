@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学与科学经典教学题库</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+    <div class="page">
+        <header class="site-header">
+            <div class="site-header-inner">
+                <h1 class="site-title">数学与科学经典教学题库</h1>
+                <p class="site-subtitle">
+                    聚焦小学与初中阶段的数学、科学教学示例，
+                    支持从题目列表进入详情页进行教学使用。
+                </p>
+            </div>
+        </header>
+
+        <main class="site-main">
+            <!--
+                如何新增一个教学题目（推荐流程）：
+                1. 在 topics/ 目录中复制一个现有的详情页文件作为模板，例如：
+                   - 复制 topics/pythagoras.html，重命名为 topics/new-topic.html
+                2. 在新文件中修改：
+                   - 页面 <title> 与 <h1> 标题
+                   - “题目描述”、“相关原理”、“示例分析”等内容
+                3. 回到本文件，在下面的 .problem-list 中增加一个新的 .problem-card：
+                   - 设置题目名称、分类标签（数学 / 科学）、简短描述
+                   - 将 <a> 的 href 指向新建的详情页文件（如 href="topics/new-topic.html"）
+                4. 本地用浏览器直接打开 index.html 检查跳转是否正常，
+                   然后即可推送到 GitHub Pages 进行静态托管。
+            -->
+
+            <section class="section">
+                <header class="section-header">
+                    <h2 class="section-title">教学题目列表</h2>
+                    <p class="section-desc">
+                        点击题目卡片可进入对应的详情页，查看完整题目、相关原理讲解与示例分析。
+                    </p>
+                </header>
+
+                <div class="problem-list">
+                    <!-- 示例题目：鸽巢问题 -->
+                    <article class="problem-card">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/pigeonhole.html">鸽巢原理（抽屉原理）交互练习</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过随机生成题目与即时反馈，帮助学生理解并运用鸽巢原理解决实际问题。
+                        </p>
+                        <a class="problem-link" href="topics/pigeonhole.html">进入详情与练习 →</a>
+                    </article>
+
+                    <!-- 示例题目：勾股定理应用 -->
+                    <article class="problem-card">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/pythagoras.html">勾股定理在直角三角形中的应用</a>
+                        </h3>
+                        <p class="problem-desc">
+                            从生活情境出发，利用勾股定理求解距离与高度问题，理解 a² + b² = c² 的几何意义。
+                        </p>
+                        <a class="problem-link" href="topics/pythagoras.html">查看题目与讲解 →</a>
+                    </article>
+
+                    <!-- 在此区域继续添加新的教学题目卡片 -->
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <p class="footer-text">
+                本站为纯静态教学示例，可直接部署在 GitHub Pages 或本地浏览器中使用。
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,198 @@
+/* 站点通用样式：用于题目列表页（index.html） */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+        "Microsoft YaHei", Arial, sans-serif;
+    background: #f4f5fb;
+    color: #222;
+    line-height: 1.6;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.site-header {
+    background: linear-gradient(135deg, #4f46e5, #06b6d4);
+    color: #fff;
+    padding: 24px 16px 32px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+}
+
+.site-header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.site-title {
+    font-size: 1.9rem;
+    margin-bottom: 8px;
+}
+
+.site-subtitle {
+    font-size: 0.98rem;
+    max-width: 720px;
+    opacity: 0.9;
+}
+
+.site-main {
+    flex: 1;
+    padding: 24px 16px 40px;
+}
+
+.section {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.section-header {
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+    color: #111827;
+}
+
+.section-desc {
+    font-size: 0.98rem;
+    color: #4b5563;
+}
+
+.problem-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.problem-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 16px 18px 18px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.problem-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.problem-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.problem-tag.math {
+    background: rgba(59, 130, 246, 0.1);
+    color: #1d4ed8;
+}
+
+.problem-tag.science {
+    background: rgba(16, 185, 129, 0.1);
+    color: #047857;
+}
+
+.problem-title {
+    font-size: 1.02rem;
+    margin-bottom: 8px;
+    color: #111827;
+}
+
+.problem-title a {
+    text-decoration: none;
+}
+
+.problem-title a:hover {
+    text-decoration: underline;
+}
+
+.problem-desc {
+    font-size: 0.95rem;
+    color: #4b5563;
+    flex: 1;
+}
+
+.problem-link {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.problem-link:hover {
+    color: #1d4ed8;
+}
+
+.site-footer {
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    padding: 14px 16px 18px;
+}
+
+.footer-text {
+    max-width: 960px;
+    margin: 0 auto;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+/* 响应式布局 */
+@media (max-width: 960px) {
+    .problem-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .site-header {
+        padding: 18px 12px 22px;
+    }
+
+    .site-title {
+        font-size: 1.5rem;
+    }
+
+    .site-main {
+        padding: 18px 12px 30px;
+    }
+
+    .problem-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .problem-card {
+        padding: 14px 15px 16px;
+    }
+}
+
