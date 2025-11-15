@@ -7,6 +7,10 @@ const slideAngleState = {
 
 const angleElements = {};
 
+let slideCanvasContext = null;
+let slideAnimationFrameId = null;
+let slideAnimationProgress = 0;
+
 function initSlideAnglePage() {
   angleElements.difficultyButtons = document.querySelectorAll(
     ".difficulty-btn"
@@ -14,8 +18,7 @@ function initSlideAnglePage() {
   angleElements.difficultySelect =
     document.getElementById("difficulty-select");
   angleElements.generateButton = document.getElementById("generate-angle");
-  angleElements.slideBoard = document.getElementById("slide-board");
-  angleElements.slideChild = document.querySelector(".slide-child");
+  angleElements.slideCanvas = document.getElementById("slide-canvas");
   angleElements.currentAngleValue =
     document.getElementById("current-angle-value");
   angleElements.currentAngleLevel =
@@ -27,18 +30,17 @@ function initSlideAnglePage() {
     "angle-safety-detail"
   );
 
+  if (angleElements.slideCanvas) {
+    slideCanvasContext = angleElements.slideCanvas.getContext("2d");
+  }
+
   setupSlideAngleListeners();
   if (angleElements.generateButton) {
     angleElements.generateButton.disabled = true;
   }
 
-  if (angleElements.slideChild) {
-    angleElements.slideChild.addEventListener("animationend", (e) => {
-      if (e.animationName === "slide-down") {
-        angleElements.slideChild.classList.remove("sliding");
-      }
-    });
-  }
+  // 初始绘制一个默认角度的滑梯和小人
+  drawSlideScene(25, 0);
 }
 
 function setupSlideAngleListeners() {
@@ -102,9 +104,6 @@ function selectAngleDifficulty(level) {
 function resetAngleDemo() {
   slideAngleState.currentAngle = null;
 
-  if (angleElements.slideBoard) {
-    angleElements.slideBoard.style.transform = "rotate(-25deg)";
-  }
   if (angleElements.currentAngleValue) {
     angleElements.currentAngleValue.textContent = "--";
   }
@@ -122,6 +121,9 @@ function resetAngleDemo() {
   if (angleElements.angleInput) {
     angleElements.angleInput.value = "";
   }
+
+  // 恢复默认展示角度但不显示具体数值
+  drawSlideScene(25, 0);
 }
 
 function generateAngleDemo() {
@@ -155,9 +157,7 @@ function randomInRange(min, max) {
 }
 
 function updateSlideVisual(angle) {
-  if (angleElements.slideBoard) {
-    angleElements.slideBoard.style.transform = `rotate(${-angle}deg)`;
-  }
+  drawSlideScene(angle, 0);
   if (angleElements.currentAngleValue) {
     angleElements.currentAngleValue.textContent = String(angle);
   }
@@ -258,12 +258,243 @@ function handleAngleSubmit() {
   updateSafetyBadge(safety, angleElements.currentAngleLevel);
 }
 
+function clearSlideCanvas() {
+  if (!slideCanvasContext || !angleElements.slideCanvas) return;
+  slideCanvasContext.clearRect(
+    0,
+    0,
+    angleElements.slideCanvas.width,
+    angleElements.slideCanvas.height
+  );
+}
+
+// 使用 canvas 绘制滑梯、地面和小人
+// childProgress 取值 0~1，表示小人在滑梯上的位置（0 在顶端，1 在底端）
+function drawSlideScene(angle, childProgress) {
+  if (!slideCanvasContext || !angleElements.slideCanvas) return;
+
+  const ctx = slideCanvasContext;
+  const canvas = angleElements.slideCanvas;
+  const width = canvas.width;
+  const height = canvas.height;
+
+  clearSlideCanvas();
+
+  // 背景天空和草地
+  const groundHeight = 32;
+  const skyHeight = height - groundHeight;
+
+  const skyGradient = ctx.createLinearGradient(0, 0, 0, skyHeight);
+  skyGradient.addColorStop(0, "#bbdefb");
+  skyGradient.addColorStop(1, "#e3f2fd");
+  ctx.fillStyle = skyGradient;
+  ctx.fillRect(0, 0, width, skyHeight);
+
+  const groundGradient = ctx.createLinearGradient(
+    0,
+    skyHeight,
+    0,
+    height
+  );
+  groundGradient.addColorStop(0, "#c8e6c9");
+  groundGradient.addColorStop(1, "#a5d6a7");
+  ctx.fillStyle = groundGradient;
+  ctx.fillRect(0, skyHeight, width, height - skyHeight);
+
+  // 地面阴影
+  ctx.fillStyle = "#6d4c41";
+  ctx.fillRect(0, height - groundHeight, width, groundHeight);
+
+  // 滑梯参数（尽量像真实游乐场滑梯）
+  const baseX = 190; // 滑梯落地位置（靠右）
+  const baseY = height - groundHeight - 2;
+  const slideLength = 130;
+  const rad = (Math.max(5, Math.min(60, angle)) * Math.PI) / 180;
+
+  // 滑梯顶部在左侧，高于地面
+  const topX = baseX - slideLength * Math.cos(rad);
+  const topY = baseY - slideLength * Math.sin(rad);
+
+  // 滑梯方向与法线
+  const dx = baseX - topX;
+  const dy = baseY - topY;
+  const len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+  const ux = dx / len;
+  const uy = dy / len;
+  const nx = -uy;
+  const ny = ux;
+
+  // 平台和支撑柱（小塔）
+  const platformWidth = 60;
+  const platformHeight = 10;
+  const platformX = topX - platformWidth * 0.4;
+  const platformY = topY - platformHeight;
+  ctx.fillStyle = "#546e7a";
+  ctx.fillRect(platformX, platformY, platformWidth, platformHeight);
+
+  // 塔身
+  ctx.fillStyle = "#8d6e63";
+  const towerWidth = 28;
+  const towerHeight = 70;
+  ctx.fillRect(
+    platformX + platformWidth * 0.15,
+    platformY,
+    towerWidth,
+    towerHeight
+  );
+
+  // 梯子（竖直加横档）
+  const ladderX = platformX + platformWidth * 0.15 + towerWidth + 6;
+  const ladderTopY = platformY + 4;
+  const ladderBottomY = ladderTopY + towerHeight - 8;
+  ctx.fillStyle = "#8d6e63";
+  ctx.fillRect(ladderX, ladderTopY, 6, ladderBottomY - ladderTopY);
+
+  ctx.strokeStyle = "#bcaaa4";
+  ctx.lineWidth = 2;
+  const rungCount = 4;
+  for (let i = 0; i <= rungCount; i++) {
+    const y =
+      ladderTopY + ((ladderBottomY - ladderTopY) * i) / rungCount;
+    ctx.beginPath();
+    ctx.moveTo(ladderX - 8, y);
+    ctx.lineTo(ladderX + 12, y);
+    ctx.stroke();
+  }
+
+  // 滑梯板（有厚度和护栏）
+  const boardHalfThickness = 6;
+  const topLeftX = topX + nx * boardHalfThickness;
+  const topLeftY = topY + ny * boardHalfThickness;
+  const topRightX = topX - nx * boardHalfThickness;
+  const topRightY = topY - ny * boardHalfThickness;
+  const bottomLeftX = baseX + nx * boardHalfThickness;
+  const bottomLeftY = baseY + ny * boardHalfThickness;
+  const bottomRightX = baseX - nx * boardHalfThickness;
+  const bottomRightY = baseY - ny * boardHalfThickness;
+
+  const slideGradient = ctx.createLinearGradient(
+    topLeftX,
+    topLeftY,
+    bottomRightX,
+    bottomRightY
+  );
+  slideGradient.addColorStop(0, "#ffcc80");
+  slideGradient.addColorStop(1, "#ffb74d");
+  ctx.fillStyle = slideGradient;
+  ctx.beginPath();
+  ctx.moveTo(topLeftX, topLeftY);
+  ctx.lineTo(bottomLeftX, bottomLeftY);
+  ctx.lineTo(bottomRightX, bottomRightY);
+  ctx.lineTo(topRightX, topRightY);
+  ctx.closePath();
+  ctx.fill();
+
+  // 两侧护栏线
+  ctx.strokeStyle = "#ffb74d";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(topLeftX, topLeftY - 4);
+  ctx.lineTo(bottomLeftX, bottomLeftY - 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(topRightX, topRightY - 4);
+  ctx.lineTo(bottomRightX, bottomRightY - 2);
+  ctx.stroke();
+
+  // 角度指示圆圈和文字 θ
+  const angleCenterX = baseX - 8;
+  const angleCenterY = baseY - 14;
+  ctx.beginPath();
+  ctx.arc(angleCenterX, angleCenterY, 12, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(33,150,243,0.8)";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255,255,255,0.9)";
+  ctx.stroke();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("θ", angleCenterX, angleCenterY);
+
+  // 小人：沿滑梯线段移动
+  const t = Math.max(0, Math.min(1, childProgress));
+  const personX = topX + (baseX - topX) * t;
+  const personY = topY + (baseY - topY) * t;
+
+  // 头
+  ctx.beginPath();
+  ctx.arc(personX, personY - 10, 6, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffcc80";
+  ctx.fill();
+  ctx.strokeStyle = "#f57c00";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 身体
+  ctx.strokeStyle = "#ff7043";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(personX, personY - 4);
+  ctx.lineTo(personX, personY + 8);
+  ctx.stroke();
+
+  // 手臂
+  const armOffset = 5;
+  ctx.beginPath();
+  ctx.moveTo(personX, personY);
+  ctx.lineTo(personX - armOffset, personY + 4);
+  ctx.moveTo(personX, personY);
+  ctx.lineTo(personX + armOffset, personY + 4);
+  ctx.stroke();
+
+  // 腿
+  ctx.beginPath();
+  ctx.moveTo(personX, personY + 8);
+  ctx.lineTo(personX - armOffset, personY + 16);
+  ctx.moveTo(personX, personY + 8);
+  ctx.lineTo(personX + armOffset, personY + 16);
+  ctx.stroke();
+}
+
+function startSlideAnimation(angle) {
+  if (!slideCanvasContext) return;
+
+  if (slideAnimationFrameId !== null) {
+    cancelAnimationFrame(slideAnimationFrameId);
+    slideAnimationFrameId = null;
+  }
+
+  const duration = 900; // 毫秒
+  let startTime = null;
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+    const progress = Math.min(1, elapsed / duration);
+
+    // 使用缓动函数让动画更自然
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+    slideAnimationProgress = easeOut;
+
+    drawSlideScene(angle, slideAnimationProgress);
+
+    if (progress < 1) {
+      slideAnimationFrameId = requestAnimationFrame(step);
+    } else {
+      slideAnimationFrameId = null;
+    }
+  }
+
+  slideAnimationProgress = 0;
+  slideAnimationFrameId = requestAnimationFrame(step);
+}
+
 function triggerSlideAnimation() {
-  if (!angleElements.slideChild) return;
-  angleElements.slideChild.classList.remove("sliding");
-  // 触发重绘以便重新播放动画
-  void angleElements.slideChild.offsetWidth;
-  angleElements.slideChild.classList.add("sliding");
+  const angle =
+    slideAngleState.currentAngle != null ? slideAngleState.currentAngle : 25;
+  startSlideAnimation(angle);
 }
 
 document.addEventListener("DOMContentLoaded", initSlideAnglePage);
