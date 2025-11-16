@@ -1339,3 +1339,183 @@ section {
 .speed-lab .viz-note {
     text-align: center;
 }
+
+.control-row.wrap {
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.sequence-lab .control-row label,
+.donut-lab .control-row label,
+.light-lab .control-row label,
+.shadow-lab .control-row label,
+.circuit-lab .control-row label,
+.buoyancy-lab .control-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: bold;
+    background: rgba(99, 102, 241, 0.08);
+    padding: 10px 14px;
+    border-radius: 12px;
+}
+
+.sequence-chart {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: end;
+    gap: 12px;
+    height: 240px;
+    margin-top: 12px;
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.06), rgba(255, 255, 255, 0));
+    border: 1px dashed rgba(99, 102, 241, 0.3);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+.sequence-bar {
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.sequence-bar-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+    border-radius: 10px 10px 0 0;
+    color: #fff;
+    font-weight: bold;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+    transition: height 0.6s ease;
+}
+
+.sequence-bar.is-negative .sequence-bar-fill {
+    background: linear-gradient(135deg, #f97316, #fb7185);
+}
+
+.sequence-bar-label {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    color: #6b7280;
+    font-weight: bold;
+}
+
+.sequence-info,
+.donut-info,
+.transform-info,
+.slope-info,
+.light-info,
+.shadow-info,
+.buoyancy-info,
+.circuit-info {
+    text-align: center;
+    margin-top: 12px;
+    color: #374151;
+    font-weight: bold;
+}
+
+.donut-lab canvas,
+.light-lab canvas,
+.shadow-lab canvas,
+.transform-lab canvas,
+.slope-lab canvas {
+    display: block;
+    margin: 12px auto 0;
+    border-radius: 14px;
+    background: #f8fafc;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.45);
+}
+
+.transform-lab canvas,
+.slope-lab canvas {
+    background: linear-gradient(180deg, rgba(226, 232, 240, 0.6), rgba(248, 250, 252, 0.9));
+}
+
+.buoyancy-scene {
+    position: relative;
+    height: 220px;
+    margin-top: 12px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #e0f2fe 0%, #f8fafc 40%);
+    box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.2);
+}
+
+.buoyancy-scene .water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 70%;
+    background: linear-gradient(180deg, #67e8f9, #0ea5e9);
+    opacity: 0.9;
+}
+
+.buoyancy-scene .block {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 60px;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    border-radius: 10px;
+    box-shadow: 0 8px 14px rgba(249, 115, 22, 0.3);
+    transition: bottom 0.6s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.bulb-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.bulb {
+    position: relative;
+    height: 120px;
+    border-radius: 12px;
+    background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0)), #111827;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
+    transition: box-shadow 0.2s ease;
+}
+
+.bulb::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.35), rgba(251, 191, 36, 0));
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.bulb.glow {
+    box-shadow: 0 0 18px rgba(250, 204, 21, 0.4), inset 0 0 0 1px rgba(148, 163, 184, 0.5);
+}
+
+.bulb.glow::after {
+    opacity: 1;
+}
+
+.bulb-label {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: bold;
+    color: #111827;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 4px 8px;
+    border-radius: 8px;
+}
