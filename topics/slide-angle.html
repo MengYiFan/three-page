@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>角度与滑滑梯的安全性 - 数学教学示例</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <!-- 复用详情页通用样式，保持整体视觉一致 -->
     <link rel="stylesheet" href="../assets/css/pigeonhole.css">
 </head>
@@ -35,7 +36,7 @@
                     </select>
                     <button id="generate-angle" class="new-problem-btn btn">生成新的滑梯角度演示</button>
                 </div>
-                <p class="angle-note">
+                <p class="angle-note mt-3 text-center text-blue-700 text-sm font-semibold">
                     系统会根据选择的情境，自动生成一个滑滑梯倾斜角度，并用动画呈现滑梯的变化。
                 </p>
             </section>
@@ -43,22 +44,22 @@
             <!-- 动画演示区域 -->
             <section class="problem-section">
                 <h2>滑滑梯角度动画演示</h2>
-                <div class="slide-demo-wrapper">
-                    <div class="slide-info-panel">
-                        <p class="slide-current-angle">
-                            当前演示角度：<span id="current-angle-value">--</span>°
+                <div class="slide-demo-wrapper flex flex-col md:flex-row md:flex-wrap items-center justify-between gap-5">
+                    <div class="slide-info-panel w-full md:basis-60 md:flex-none space-y-2 text-slate-700">
+                        <p class="slide-current-angle text-lg font-semibold text-slate-800">
+                            当前演示角度：<span id="current-angle-value" class="text-2xl font-extrabold text-indigo-600">--</span>°
                         </p>
-                        <p class="slide-current-level">
+                        <p class="slide-current-level text-sm text-slate-700">
                             系统判断的安全等级：
-                            <span id="current-angle-level" class="safety-badge">未生成</span>
+                            <span id="current-angle-level" class="safety-badge inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-white bg-slate-400 shadow">未生成</span>
                         </p>
-                        <p class="slide-hint">
+                        <p class="slide-hint text-sm text-slate-600 leading-relaxed">
                             提示：角度越大，滑梯越陡；角度太小则会“滑不动”或滑得很慢。
                         </p>
                     </div>
 
-                    <div class="slide-visual">
-                        <canvas id="slide-canvas">
+                    <div class="slide-visual relative w-full md:flex-1 min-w-[320px] h-[260px] rounded-2xl bg-[linear-gradient(180deg,_#bbdefb_0%,_#e3f2fd_40%,_#c8e6c9_40%,_#a5d6a7_100%)] shadow-[inset_0_2px_8px_rgba(0,0,0,0.08)] overflow-hidden">
+                        <canvas id="slide-canvas" class="w-full h-full block">
                             您的浏览器不支持 canvas，请更换浏览器以查看动画。
                         </canvas>
                     </div>
@@ -75,7 +76,7 @@
                     <button id="submit-angle" class="btn">提交角度并查看安全等级</button>
                 </div>
                 <div id="angle-feedback" class="feedback"></div>
-                <div id="angle-safety-detail" class="safety-detail"></div>
+                <div id="angle-safety-detail" class="safety-detail mt-4"></div>
             </section>
 
             <!-- 知识讲解区域 -->

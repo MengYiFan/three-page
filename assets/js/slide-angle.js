@@ -21,6 +21,8 @@ let currentVisualAngle = 25; // 当前用于渲染滑梯的角度
 const SLIDE_ANIMATION_MIN_DURATION = 900; // 毫秒，角度大时更快
 const SLIDE_ANIMATION_MAX_DURATION = 2400; // 毫秒，角度小时更慢
 let slideAnimationDuration = SLIDE_ANIMATION_MAX_DURATION;
+const SAFETY_BADGE_BASE =
+  "safety-badge inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-white shadow";
 
 function initSlideAnglePage() {
   angleElements.difficultyButtons = document.querySelectorAll(
@@ -139,7 +141,7 @@ function resetAngleDemo() {
   }
   if (angleElements.currentAngleLevel) {
     angleElements.currentAngleLevel.textContent = "未生成";
-    angleElements.currentAngleLevel.className = "safety-badge";
+    angleElements.currentAngleLevel.className = `${SAFETY_BADGE_BASE} bg-slate-400`;
   }
   if (angleElements.angleFeedback) {
     angleElements.angleFeedback.textContent = "";
@@ -202,7 +204,7 @@ const SAFETY_LEVELS = [
   {
     id: "too-soft",
     label: "过缓",
-    className: "safety-soft",
+    className: "bg-sky-500",
     condition: (a) => a > 0 && a < 15,
     summary: "滑梯角度太小，孩子可能很难滑动或滑得很慢。",
     tip: "可以适当增加一点角度，让滑梯既能滑得动，又不过于陡峭。"
@@ -210,7 +212,7 @@ const SAFETY_LEVELS = [
   {
     id: "safe",
     label: "安全适中",
-    className: "safety-safe",
+    className: "bg-emerald-500",
     condition: (a) => a >= 15 && a <= 35,
     summary: "这是常见的儿童滑梯安全设计范围，滑行速度适中。",
     tip: "同时还需要配合扶手、防护栏等设施，才能更加安全。"
@@ -218,7 +220,7 @@ const SAFETY_LEVELS = [
   {
     id: "border",
     label: "偏陡",
-    className: "safety-border",
+    className: "bg-amber-500",
     condition: (a) => a > 35 && a <= 40,
     summary: "滑梯已经比较陡，滑行速度明显变快，需要更多保护措施。",
     tip: "应特别注意滑梯的高度、护栏和缓冲区设计，适合更大年龄的儿童。"
@@ -226,7 +228,7 @@ const SAFETY_LEVELS = [
   {
     id: "danger",
     label: "过陡，存在安全风险",
-    className: "safety-danger",
+    className: "bg-rose-500",
     condition: (a) => a > 40,
     summary: "滑梯过于陡峭，孩子滑下来的速度很快，容易发生危险。",
     tip: "应降低滑梯高度或减小角度，避免在校园和普通儿童游乐场中使用。"
@@ -238,7 +240,7 @@ function classifyAngle(angle) {
     return {
       id: "invalid",
       label: "不合理角度",
-      className: "safety-invalid",
+      className: "bg-slate-400",
       summary:
         "请输入 5° 到 60° 范围内的角度，便于讨论实际滑梯情况。",
       tip: "在现实生活中，滑梯不会完全水平（0°），也不会接近竖直（90°）。"
@@ -258,7 +260,7 @@ function classifyAngle(angle) {
 function updateSafetyBadge(safety, badgeElement) {
   if (!badgeElement || !safety) return;
   badgeElement.textContent = safety.label;
-  badgeElement.className = `safety-badge ${safety.className}`;
+  badgeElement.className = `${SAFETY_BADGE_BASE} ${safety.className}`;
 }
 
 function handleAngleSubmit() {
@@ -288,9 +290,9 @@ function handleAngleSubmit() {
   }
 
   angleElements.angleSafetyDetail.innerHTML = `
-    <div class="safety-detail-inner">
-      <p class="safety-summary">${safety.summary}</p>
-      <p class="safety-tip">${safety.tip}</p>
+    <div class="safety-detail-inner rounded-xl bg-white shadow-md border-l-4 border-sky-400 px-4 py-3 space-y-2">
+      <p class="safety-summary font-bold text-slate-800">${safety.summary}</p>
+      <p class="safety-tip text-sm text-slate-600 leading-relaxed">${safety.tip}</p>
     </div>
   `;
 
