@@ -21,7 +21,15 @@ document.addEventListener("DOMContentLoaded", () => {
     "symmetry-folding": initSymmetryFolding,
     "planet-orbits": initPlanetOrbits,
     "sound-waves": initSoundWaves,
-    "particle-states": initParticleStates
+    "particle-states": initParticleStates,
+    "arithmetic-stairs": initArithmeticStairs,
+    "percent-donut": initPercentDonut,
+    "coordinate-transform": initCoordinateTransform,
+    "line-slope": initLineSlope,
+    "light-reflection": initLightReflection,
+    "sun-shadow": initSunShadow,
+    "buoyancy-density": initBuoyancyDensity,
+    "circuit-brightness": initCircuitBrightness
   };
   if (topic && typeof inits[topic] === "function") {
     inits[topic]();
@@ -1901,4 +1909,630 @@ function initParticleStates() {
     info.textContent = "拖动温度滑块，对比三种物态的运动。";
   }
   requestAnimationFrame(loop);
+}
+
+function initArithmeticStairs() {
+  const firstInput = document.getElementById("arith-first");
+  const diffInput = document.getElementById("arith-diff");
+  const nInput = document.getElementById("arith-n");
+  const chart = document.getElementById("arith-chart");
+  if (!firstInput || !diffInput || !chart) return;
+  const firstValue = document.getElementById("arith-first-value");
+  const diffValue = document.getElementById("arith-diff-value");
+  const info = document.getElementById("arith-info");
+  const replayBtn = document.getElementById("arith-replay");
+
+  const render = () => {
+    const a1 = Number(firstInput.value);
+    const d = Number(diffInput.value);
+    const n = Math.max(1, Math.min(50, Number(nInput?.value) || 1));
+    const data = Array.from({ length: 6 }, (_, i) => ({
+      name: `a${i + 1}`,
+      value: a1 + d * i
+    }));
+    const maxAbs = Math.max(...data.map((item) => Math.abs(item.value)), 1);
+    chart.innerHTML = "";
+
+    data.forEach((item, index) => {
+      const bar = document.createElement("div");
+      bar.className = "sequence-bar";
+      if (item.value < 0) bar.classList.add("is-negative");
+
+      const fill = document.createElement("div");
+      fill.className = "sequence-bar-fill";
+      fill.textContent = item.value.toFixed(1).replace(/\.0$/, "");
+      fill.style.height = "0%";
+
+      const percent = (Math.abs(item.value) / maxAbs) * 80 + 8;
+      const label = document.createElement("div");
+      label.className = "sequence-bar-label";
+      label.textContent = item.name;
+      bar.appendChild(fill);
+      bar.appendChild(label);
+      chart.appendChild(bar);
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          fill.style.height = `${percent}%`;
+        }, index * 120);
+      });
+    });
+
+    if (firstValue) firstValue.textContent = a1.toString();
+    if (diffValue) diffValue.textContent = d.toString();
+    if (nInput) nInput.value = n;
+    if (info) {
+      const nth = a1 + (n - 1) * d;
+      info.textContent = `a${n} = ${a1} + (${n} - 1)×${d} = ${nth.toFixed(1)}`;
+    }
+  };
+
+  [firstInput, diffInput, nInput].forEach((input) =>
+    input?.addEventListener("input", render)
+  );
+  replayBtn?.addEventListener("click", render);
+  render();
+}
+
+function initPercentDonut() {
+  const canvas = document.getElementById("donut-canvas");
+  const slider = document.getElementById("donut-progress");
+  if (!canvas || !canvas.getContext || !slider) return;
+  const ctx = canvas.getContext("2d");
+  const valueEl = document.getElementById("donut-value");
+  const info = document.getElementById("donut-info");
+  const animateBtn = document.getElementById("donut-animate");
+  let displayed = Number(slider.value);
+  let target = displayed;
+  let rafId;
+  let autoTimer;
+
+  const draw = (percent) => {
+    const center = { x: canvas.width / 2, y: canvas.height / 2 };
+    const radius = 90;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.lineWidth = 20;
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop(0, "#22c55e");
+    gradient.addColorStop(1, "#0ea5e9");
+    ctx.strokeStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(
+      center.x,
+      center.y,
+      radius,
+      -Math.PI / 2,
+      -Math.PI / 2 + (Math.PI * 2 * percent) / 100
+    );
+    ctx.stroke();
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 28px 'Segoe UI', 'Microsoft YaHei'";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${percent.toFixed(0)}%`, center.x, center.y);
+  };
+
+  const tick = () => {
+    const diff = target - displayed;
+    if (Math.abs(diff) < 0.2) {
+      displayed = target;
+    } else {
+      displayed += diff * 0.12;
+    }
+    draw(displayed);
+    if (valueEl) valueEl.textContent = `${Math.round(displayed)}%`;
+    if (info) {
+      const frac = (displayed / 100).toFixed(2);
+      info.textContent = `${frac} = ${Math.round(displayed)}/100`;
+    }
+    rafId = requestAnimationFrame(tick);
+  };
+
+  const updateTarget = (value) => {
+    target = Number(value);
+  };
+
+  slider.addEventListener("input", (e) => updateTarget(e.target.value));
+  animateBtn?.addEventListener("click", () => {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      animateBtn.textContent = "自动播放";
+      return;
+    }
+    animateBtn.textContent = "暂停播放";
+    let direction = 1;
+    autoTimer = setInterval(() => {
+      if (target >= 100) direction = -1;
+      if (target <= 0) direction = 1;
+      target = target + direction * 8;
+      slider.value = String(Math.max(0, Math.min(100, target)));
+    }, 420);
+  });
+
+  tick();
+}
+
+function initCoordinateTransform() {
+  const canvas = document.getElementById("transform-canvas");
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext("2d");
+  const moveX = document.getElementById("move-x");
+  const moveY = document.getElementById("move-y");
+  const rotate = document.getElementById("rotate-angle");
+  const moveXVal = document.getElementById("move-x-value");
+  const moveYVal = document.getElementById("move-y-value");
+  const rotateVal = document.getElementById("rotate-angle-value");
+  const info = document.getElementById("transform-info");
+  const resetBtn = document.getElementById("transform-reset");
+  const base = [
+    { name: "A", x: 1, y: 1 },
+    { name: "B", x: 4, y: 1 },
+    { name: "C", x: 2, y: 3 }
+  ];
+  const center = { x: canvas.width / 2, y: canvas.height * 0.75 };
+  const scale = 40;
+
+  const toScreen = (pt) => ({
+    x: center.x + pt.x * scale,
+    y: center.y - pt.y * scale
+  });
+
+  const drawGrid = () => {
+    ctx.save();
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.5)";
+    ctx.lineWidth = 1;
+    for (let i = -5; i <= 5; i++) {
+      const px = center.x + i * scale;
+      ctx.beginPath();
+      ctx.moveTo(px, 20);
+      ctx.lineTo(px, canvas.height - 20);
+      ctx.stroke();
+    }
+    for (let j = -2; j <= 6; j++) {
+      const py = center.y - j * scale;
+      ctx.beginPath();
+      ctx.moveTo(40, py);
+      ctx.lineTo(canvas.width - 40, py);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(40, center.y);
+    ctx.lineTo(canvas.width - 40, center.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(center.x, 20);
+    ctx.lineTo(center.x, canvas.height - 20);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const draw = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGrid();
+    const dx = Number(moveX?.value || 0);
+    const dy = Number(moveY?.value || 0);
+    const angle = ((Number(rotate?.value) || 0) * Math.PI) / 180;
+    if (moveXVal) moveXVal.textContent = dx.toString();
+    if (moveYVal) moveYVal.textContent = dy.toString();
+    if (rotateVal) rotateVal.textContent = `${Math.round((angle * 180) / Math.PI)}°`;
+
+    const rotated = base.map((p) => {
+      const x = p.x + dx;
+      const y = p.y + dy;
+      return {
+        name: p.name,
+        x: x * Math.cos(angle) - y * Math.sin(angle),
+        y: x * Math.sin(angle) + y * Math.cos(angle)
+      };
+    });
+
+    ctx.fillStyle = "rgba(96, 165, 250, 0.1)";
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    rotated.forEach((pt, idx) => {
+      const s = toScreen(pt);
+      if (idx === 0) ctx.moveTo(s.x, s.y);
+      else ctx.lineTo(s.x, s.y);
+    });
+    const first = toScreen(rotated[0]);
+    ctx.lineTo(first.x, first.y);
+    ctx.fill();
+    ctx.stroke();
+
+    rotated.forEach((pt) => {
+      const s = toScreen(pt);
+      ctx.fillStyle = "#1f2937";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#111827";
+      ctx.font = "bold 14px 'Segoe UI'";
+      ctx.fillText(`${pt.name}(${pt.x.toFixed(1)}, ${pt.y.toFixed(1)})`, s.x + 8, s.y - 6);
+    });
+
+    if (info) {
+      info.textContent = `平移 ( ${dx}, ${dy} ) 并旋转 ${Math.round(
+        (angle * 180) / Math.PI
+      )}° 后，三角形大小不变，只是位置改变。`;
+    }
+  };
+
+  [moveX, moveY, rotate].forEach((el) => el?.addEventListener("input", draw));
+  resetBtn?.addEventListener("click", () => {
+    moveX.value = "1";
+    moveY.value = "0";
+    rotate.value = "20";
+    draw();
+  });
+  draw();
+}
+
+function initLineSlope() {
+  const canvas = document.getElementById("slope-canvas");
+  const slopeInput = document.getElementById("slope-m");
+  const interceptInput = document.getElementById("slope-b");
+  if (!canvas || !canvas.getContext || !slopeInput || !interceptInput) return;
+  const ctx = canvas.getContext("2d");
+  const slopeVal = document.getElementById("slope-m-value");
+  const interceptVal = document.getElementById("slope-b-value");
+  const info = document.getElementById("slope-info");
+  const resetBtn = document.getElementById("slope-reset");
+  const center = { x: canvas.width / 2, y: canvas.height / 2 };
+  const scale = 35;
+
+  const drawGrid = () => {
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.5)";
+    for (let i = -6; i <= 6; i++) {
+      const px = center.x + i * scale;
+      ctx.beginPath();
+      ctx.moveTo(px, 10);
+      ctx.lineTo(px, canvas.height - 10);
+      ctx.stroke();
+    }
+    for (let j = -6; j <= 6; j++) {
+      const py = center.y - j * scale;
+      ctx.beginPath();
+      ctx.moveTo(10, py);
+      ctx.lineTo(canvas.width - 10, py);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#10b981";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(10, center.y);
+    ctx.lineTo(canvas.width - 10, center.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(center.x, 10);
+    ctx.lineTo(center.x, canvas.height - 10);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  const draw = () => {
+    const m = Number(slopeInput.value);
+    const b = Number(interceptInput.value);
+    if (slopeVal) slopeVal.textContent = m.toFixed(1);
+    if (interceptVal) interceptVal.textContent = b.toFixed(1);
+    drawGrid();
+    ctx.save();
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    const x1 = -6;
+    const x2 = 6;
+    const y1 = m * x1 + b;
+    const y2 = m * x2 + b;
+    ctx.moveTo(center.x + x1 * scale, center.y - y1 * scale);
+    ctx.lineTo(center.x + x2 * scale, center.y - y2 * scale);
+    ctx.stroke();
+
+    // 画一个“上升/运行”斜率三角形
+    ctx.fillStyle = "rgba(37, 99, 235, 0.15)";
+    ctx.beginPath();
+    const origin = { x: center.x - 2 * scale, y: center.y - (m * -2 + b) * scale };
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(origin.x + scale, origin.y);
+    ctx.lineTo(origin.x + scale, origin.y - m * scale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#1d4ed8";
+    ctx.stroke();
+    ctx.restore();
+
+    if (info) {
+      info.textContent = `y = ${m.toFixed(1)}x + ${b.toFixed(1)} ，斜率表示“每向右 1，向上 ${m.toFixed(
+        1
+      )}”。`;
+    }
+  };
+
+  [slopeInput, interceptInput].forEach((el) =>
+    el.addEventListener("input", draw)
+  );
+  resetBtn?.addEventListener("click", () => {
+    slopeInput.value = "0.8";
+    interceptInput.value = "1";
+    draw();
+  });
+  draw();
+}
+
+function initLightReflection() {
+  const canvas = document.getElementById("light-canvas");
+  const slider = document.getElementById("light-angle");
+  if (!canvas || !canvas.getContext || !slider) return;
+  const ctx = canvas.getContext("2d");
+  const valueEl = document.getElementById("light-angle-value");
+  const info = document.getElementById("light-info");
+  const reset = document.getElementById("light-reset");
+  let targetAngle = Number(slider.value);
+  let currentAngle = targetAngle;
+
+  const draw = (angle) => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const hit = { x: canvas.width / 2 + 40, y: canvas.height * 0.55 };
+    const rad = (angle * Math.PI) / 180;
+    const length = 180;
+    const incidentDir = Math.PI - rad;
+    const reflectDir = Math.PI + rad;
+    const start = {
+      x: hit.x + Math.cos(incidentDir) * -length,
+      y: hit.y + Math.sin(incidentDir) * -length
+    };
+    const end = {
+      x: hit.x + Math.cos(reflectDir) * length,
+      y: hit.y + Math.sin(reflectDir) * length
+    };
+
+    ctx.strokeStyle = "#94a3b8";
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(hit.x, 20);
+    ctx.lineTo(hit.x, canvas.height - 20);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = "#0ea5e9";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(hit.x, hit.y);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#f97316";
+    ctx.beginPath();
+    ctx.moveTo(hit.x, hit.y);
+    ctx.lineTo(end.x, end.y);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#111827";
+    ctx.beginPath();
+    ctx.arc(hit.x, hit.y, 46, Math.PI, Math.PI + rad);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(hit.x, hit.y, 54, 0, rad);
+    ctx.stroke();
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 14px 'Segoe UI'";
+    ctx.fillText("入射角", hit.x - 60, hit.y - 30);
+    ctx.fillText("反射角", hit.x + 12, hit.y - 34);
+  };
+
+  const tick = () => {
+    currentAngle += (targetAngle - currentAngle) * 0.15;
+    draw(currentAngle);
+    if (valueEl) valueEl.textContent = `${Math.round(currentAngle)}°`;
+    if (info) info.textContent = `入射角 ≈ 反射角 ≈ ${Math.round(currentAngle)}°`;
+    requestAnimationFrame(tick);
+  };
+
+  slider.addEventListener("input", (e) => {
+    targetAngle = Number(e.target.value);
+  });
+  reset?.addEventListener("click", () => {
+    targetAngle = 0;
+    slider.value = "5";
+    targetAngle = 5;
+  });
+  tick();
+}
+
+function initSunShadow() {
+  const canvas = document.getElementById("sun-canvas");
+  const angleInput = document.getElementById("sun-angle");
+  const heightInput = document.getElementById("sun-height");
+  if (!canvas || !canvas.getContext || !angleInput || !heightInput) return;
+  const ctx = canvas.getContext("2d");
+  const angleValue = document.getElementById("sun-angle-value");
+  const heightValue = document.getElementById("sun-height-value");
+  const info = document.getElementById("shadow-info");
+  const resetBtn = document.getElementById("sun-reset");
+  let angle = Number(angleInput.value);
+  let height = Number(heightInput.value);
+
+  const draw = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const groundY = canvas.height * 0.78;
+    const pxPerMeter = 18;
+    const poleHeight = height * pxPerMeter;
+    const angleRad = (angle * Math.PI) / 180;
+    const shadowLength = Math.min(260, poleHeight / Math.tan(angleRad));
+
+    ctx.fillStyle = "#e5e7eb";
+    ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+    ctx.fillStyle = "#0ea5e9";
+    ctx.beginPath();
+    const sunX = canvas.width - 60;
+    const sunY = groundY - Math.tan(angleRad) * 80;
+    ctx.arc(sunX, sunY, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.beginPath();
+    ctx.moveTo(160, groundY);
+    ctx.lineTo(160 + shadowLength, groundY);
+    ctx.lineTo(160, groundY - poleHeight);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(140, groundY - poleHeight, 40, poleHeight);
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(130, groundY - poleHeight - 6, 60, 6);
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 14px 'Segoe UI'";
+    ctx.fillText(`影长 ≈ ${shadowLength.toFixed(0)} cm`, 180, groundY + 24);
+  };
+
+  const update = () => {
+    angle = Number(angleInput.value);
+    height = Number(heightInput.value);
+    if (angleValue) angleValue.textContent = `${angle}°`;
+    if (heightValue) heightValue.textContent = `${height} m`;
+    draw();
+    if (info) {
+      info.textContent = `太阳高度 ${angle}° 时，影子约为 ${(
+        height / Math.tan((angle * Math.PI) / 180)
+      ).toFixed(2)} 米。`;
+    }
+  };
+
+  angleInput.addEventListener("input", update);
+  heightInput.addEventListener("input", update);
+  resetBtn?.addEventListener("click", () => {
+    angleInput.value = "55";
+    heightInput.value = "4";
+    update();
+  });
+  update();
+}
+
+function initBuoyancyDensity() {
+  const objectInput = document.getElementById("density-object");
+  const fluidInput = document.getElementById("density-fluid");
+  const block = document.getElementById("buoy-block");
+  const scene = document.querySelector(".buoyancy-scene");
+  const water = scene?.querySelector(".water");
+  if (!objectInput || !fluidInput || !block || !scene || !water) return;
+  const objectValue = document.getElementById("density-object-value");
+  const fluidValue = document.getElementById("density-fluid-value");
+  const info = document.getElementById("buoy-info");
+  const resetBtn = document.getElementById("density-reset");
+
+  const update = () => {
+    const obj = Number(objectInput.value);
+    const flu = Number(fluidInput.value);
+    if (objectValue) objectValue.textContent = obj.toFixed(2);
+    if (fluidValue) fluidValue.textContent = flu.toFixed(2);
+
+    const ratio = obj / flu;
+    const submerge = Math.min(1, ratio);
+    const sceneRect = scene.getBoundingClientRect();
+    const waterRect = water.getBoundingClientRect();
+    const blockRect = block.getBoundingClientRect();
+    const waterHeight = waterRect.height;
+    const visibleHeight = blockRect.height * submerge;
+    const bottomPx = Math.max(waterHeight - visibleHeight, 0);
+    block.style.bottom = `${bottomPx}px`;
+    block.style.background =
+      ratio > 1
+        ? "linear-gradient(135deg, #ef4444, #f97316)"
+        : "linear-gradient(135deg, #22c55e, #16a34a)";
+    block.style.boxShadow =
+      ratio > 1
+        ? "0 8px 14px rgba(239, 68, 68, 0.35)"
+        : "0 8px 14px rgba(34, 197, 94, 0.35)";
+
+    if (info) {
+      let status = "悬浮";
+      if (ratio < 1) status = "漂浮";
+      if (ratio > 1) status = "下沉";
+      info.textContent = `物体密度 ${obj.toFixed(2)}，液体密度 ${flu.toFixed(
+        2
+      )} ，当前状态：${status}`;
+    }
+  };
+
+  objectInput.addEventListener("input", update);
+  fluidInput.addEventListener("input", update);
+  resetBtn?.addEventListener("click", () => {
+    objectInput.value = "0.8";
+    fluidInput.value = "1.00";
+    update();
+  });
+  update();
+}
+
+function initCircuitBrightness() {
+  const mode = document.getElementById("circuit-mode");
+  const voltage = document.getElementById("circuit-voltage");
+  const resistance = document.getElementById("circuit-resistance");
+  const bulbA = document.getElementById("bulb-a");
+  const bulbB = document.getElementById("bulb-b");
+  if (!mode || !voltage || !resistance || !bulbA || !bulbB) return;
+  const voltageVal = document.getElementById("circuit-voltage-value");
+  const resistanceVal = document.getElementById("circuit-resistance-value");
+  const info = document.getElementById("circuit-info");
+  const resetBtn = document.getElementById("circuit-reset");
+
+  const setBulbLevel = (bulb, level) => {
+    const clamped = Math.max(0, Math.min(1, level));
+    bulb.style.background = `radial-gradient(circle at 50% 30%, rgba(251, 191, 36, ${
+      0.5 * clamped
+    }), rgba(17, 24, 39, 0.95))`;
+    bulb.classList.toggle("glow", clamped > 0.05);
+  };
+
+  const update = () => {
+    const V = Number(voltage.value);
+    const R = Number(resistance.value);
+    if (voltageVal) voltageVal.textContent = `${V}V`;
+    if (resistanceVal) resistanceVal.textContent = `${R}Ω`;
+    const modeValue = mode.value;
+
+    let powerPerBulb;
+    if (modeValue === "series") {
+      powerPerBulb = (V * V) / (4 * R);
+    } else {
+      powerPerBulb = (V * V) / R;
+    }
+
+    const maxPower = (9 * 9) / 2;
+    const level = powerPerBulb / maxPower;
+    setBulbLevel(bulbA, level);
+    setBulbLevel(bulbB, level);
+
+    if (info) {
+      const perVoltage = modeValue === "series" ? V / 2 : V;
+      info.textContent = `${modeValue === "series" ? "串联" : "并联"}：每个灯泡约 ${perVoltage.toFixed(
+        1
+      )}V，功率比例 ${(level * 100).toFixed(0)}%`;
+    }
+  };
+
+  [mode, voltage, resistance].forEach((el) => el.addEventListener("input", update));
+  resetBtn?.addEventListener("click", () => {
+    mode.value = "series";
+    voltage.value = "6";
+    resistance.value = "4";
+    update();
+  });
+  update();
 }

@@ -45,6 +45,7 @@
                     <button class="filter-btn active" data-filter="all" type="button">全部</button>
                     <button class="filter-btn" data-filter="math" type="button">数学</button>
                     <button class="filter-btn" data-filter="science" type="button">科学</button>
+                    <button class="random-btn" id="random-entry" type="button" aria-label="随机进入当前分类的题目">随机入口</button>
                 </div>
 
                 <div class="problem-list">
@@ -342,6 +343,118 @@
                         <a class="problem-link" href="topics/particle-states.html">观察粒子世界 →</a>
                     </article>
 
+                    <!-- 新增：等差数列台阶 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/arithmetic-stairs.html">等差数列台阶动画</a>
+                        </h3>
+                        <p class="problem-desc">
+                            通过首项与公差滑块生成台阶柱状图，直观体验等差累加与第 n 项公式。
+                        </p>
+                        <a class="problem-link" href="topics/arithmetic-stairs.html">生成台阶 →</a>
+                    </article>
+
+                    <!-- 新增：百分比圆环 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/percent-donut.html">百分比圆环填色</a>
+                        </h3>
+                        <p class="problem-desc">
+                            拖动进度条让圆环逐步填充，把百分数与角度、弧长建立联系。
+                        </p>
+                        <a class="problem-link" href="topics/percent-donut.html">体验百分比 →</a>
+                    </article>
+
+                    <!-- 新增：坐标平移与旋转 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/coordinate-transform.html">坐标平移与旋转</a>
+                        </h3>
+                        <p class="problem-desc">
+                            平移、旋转滑块驱动三角形运动，在坐标系中观察刚体变换。
+                        </p>
+                        <a class="problem-link" href="topics/coordinate-transform.html">变换三角形 →</a>
+                    </article>
+
+                    <!-- 新增：斜率与截距 -->
+                    <article class="problem-card" data-category="math">
+                        <div class="problem-meta">
+                            <span class="problem-tag math">数学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/line-slope.html">斜率与截距动态图</a>
+                        </h3>
+                        <p class="problem-desc">
+                            一次函数直线随斜率、截距滑块摆动，强化 y = mx + b 的图像意义。
+                        </p>
+                        <a class="problem-link" href="topics/line-slope.html">画出直线 →</a>
+                    </article>
+
+                    <!-- 新增：光的反射 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/light-reflection.html">光的反射角实验</a>
+                        </h3>
+                        <p class="problem-desc">
+                            拖动入射角，镜面上实时展示对称的反射光路，验证入射角等于反射角。
+                        </p>
+                        <a class="problem-link" href="topics/light-reflection.html">照亮镜面 →</a>
+                    </article>
+
+                    <!-- 新增：太阳高度与影子 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/sun-shadow.html">太阳高度与影子长度</a>
+                        </h3>
+                        <p class="problem-desc">
+                            旋转阳光角度与旗杆高度，影子会随之拉长或缩短，体验三角函数应用。
+                        </p>
+                        <a class="problem-link" href="topics/sun-shadow.html">调整阳光 →</a>
+                    </article>
+
+                    <!-- 新增：浮力与密度 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/buoyancy-density.html">浮力与密度</a>
+                        </h3>
+                        <p class="problem-desc">
+                            改变物体与液体密度，观察方块浮、悬、沉的深度，直观呈现阿基米德原理。
+                        </p>
+                        <a class="problem-link" href="topics/buoyancy-density.html">调整密度 →</a>
+                    </article>
+
+                    <!-- 新增：串并联与亮度 -->
+                    <article class="problem-card" data-category="science">
+                        <div class="problem-meta">
+                            <span class="problem-tag science">科学</span>
+                        </div>
+                        <h3 class="problem-title">
+                            <a href="topics/circuit-brightness.html">串并联与灯泡亮度</a>
+                        </h3>
+                        <p class="problem-desc">
+                            切换串联/并联与电压大小，观察两只灯泡亮度变化，理解功率分配。
+                        </p>
+                        <a class="problem-link" href="topics/circuit-brightness.html">点亮电路 →</a>
+                    </article>
+
                     <!-- 在此区域继续添加新的教学题目卡片 -->
                 </div>
             </section>
@@ -357,6 +470,7 @@
       document.addEventListener("DOMContentLoaded", () => {
         const buttons = document.querySelectorAll(".filter-btn");
         const cards = document.querySelectorAll(".problem-card");
+        const randomBtn = document.getElementById("random-entry");
         let currentFilter = "all";
 
         const applyFilter = (filter) => {
@@ -377,8 +491,26 @@
           });
         });
 
+        randomBtn?.addEventListener("click", () => {
+          const pool = Array.from(cards).filter((card) => {
+            const category = card.dataset.category || "math";
+            const match = currentFilter === "all" || category === currentFilter;
+            return match && !card.classList.contains("is-hidden");
+          });
+          if (!pool.length) return;
+          const target = pool[Math.floor(Math.random() * pool.length)];
+          cards.forEach((card) => card.classList.remove("is-highlight"));
+          target.classList.add("is-highlight");
+          const link = target.querySelector("a");
+          setTimeout(() => {
+            if (link) {
+              window.location.href = link.getAttribute("href");
+            }
+          }, 320);
+        });
+
         applyFilter(currentFilter);
       });
     </script>
-</body>
+  </body>
 </html>
