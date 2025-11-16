@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数轴上的加法冒险</title>
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+    <style>
+        .numberline-board {
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 16px;
+        }
+        .numberline {
+            position: relative;
+            height: 52px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .numberline .ticks {
+            display: grid;
+            grid-template-columns: repeat(21, 1fr);
+            height: 100%;
+        }
+        .numberline .tick {
+            border-left: 1px solid rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+        .numberline .tick span {
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #475569;
+        }
+        .bunny {
+            position: absolute;
+            top: 4px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #fcd34d;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.25s ease;
+        }
+        .bunny::after {
+            content: "🐰";
+            font-size: 16px;
+        }
+        .nl-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .nl-input {
+            width: 110px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>数轴上的加法冒险</h1>
+            <p class="subtitle">用跳格子的方式学会加法</p>
+            <p class="author">网页制作者：教学示例内容</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>情境引入</h2>
+                <div class="knowledge-content">
+                    
+<p>小兔朵朵在数轴上跳格子，每次向右跳代表加法。学生需要观察起点、跳格数量与终点，理解“从哪出发”和“跳几格”的意义。</p>
+
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>核心知识点</h2>
+                <div class="knowledge-content">
+                    
+<ul>
+<li>数轴从0开始，向右数字越来越大。</li>
+<li>加法可以看成向右跳格数：起点 + 跳格数 = 终点。</li>
+<li>先看清起点，再数跳的格子，落脚点就是结果。</li>
+</ul>
+
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>互动：小兔跳格子</h2>
+                <div class="numberline-board">
+                    <p id="nl-question" class="slide-hint">小兔从 0 出发，向右跳几格？</p>
+                    <div class="numberline" aria-label="0 到 20 的数轴">
+                        <div class="ticks">
+                            <div class="tick"><span>0</span></div>
+                            <div class="tick"><span>1</span></div>
+                            <div class="tick"><span>2</span></div>
+                            <div class="tick"><span>3</span></div>
+                            <div class="tick"><span>4</span></div>
+                            <div class="tick"><span>5</span></div>
+                            <div class="tick"><span>6</span></div>
+                            <div class="tick"><span>7</span></div>
+                            <div class="tick"><span>8</span></div>
+                            <div class="tick"><span>9</span></div>
+                            <div class="tick"><span>10</span></div>
+                            <div class="tick"><span>11</span></div>
+                            <div class="tick"><span>12</span></div>
+                            <div class="tick"><span>13</span></div>
+                            <div class="tick"><span>14</span></div>
+                            <div class="tick"><span>15</span></div>
+                            <div class="tick"><span>16</span></div>
+                            <div class="tick"><span>17</span></div>
+                            <div class="tick"><span>18</span></div>
+                            <div class="tick"><span>19</span></div>
+                            <div class="tick"><span>20</span></div>
+                        </div>
+                        <div id="nl-bunny" class="bunny" style="left:0%"></div>
+                        <div id="nl-track"></div>
+                    </div>
+                    <div class="nl-actions">
+                        <button id="nl-start" class="btn btn-small">开始跳格子</button>
+                        <input id="nl-input" type="number" class="nl-input angle-input" placeholder="输入终点" min="0" max="20">
+                        <button id="nl-submit" class="btn btn-small">提交答案</button>
+                    </div>
+                    <div id="nl-feedback" class="feedback" aria-live="polite"></div>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>课堂演示与操作</h2>
+                <div class="knowledge-content">
+                    
+<ol>
+<li>教师在白板上画出0~20的数轴，放置小兔贴纸作为起点。</li>
+<li>随机抽卡片决定“跳几格”，学生上台沿着数轴贴出脚印。</li>
+<li>全班大声数数并核对终点，巩固“加几就是向右跳几格”。</li>
+</ol>
+
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展思考</h2>
+                <div class="knowledge-content">
+                    
+<p>如果改成“向左跳”会发生什么？引导学生发现那是减法，并尝试用数轴解决5+?=12等逆向问题。</p>
+
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>本页为教学示例页面，可直接在课堂使用或再创作。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/number-line-addition.js"></script>
+</body>
+</html>
