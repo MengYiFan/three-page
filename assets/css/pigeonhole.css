@@ -712,6 +712,344 @@ section {
     transition: opacity 0.4s ease;
 }
 
+/* 统一的表单网格与信息卡片 */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px 16px;
+    margin-bottom: 14px;
+}
+
+.form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.form-grid input[type="range"] {
+    width: 100%;
+}
+
+/* 等差数列楼梯 */
+.stairs-wrapper {
+    background: linear-gradient(135deg, rgba(94, 234, 212, 0.12), rgba(129, 140, 248, 0.12));
+    border-radius: 16px;
+    padding: 14px;
+    border: 1px solid rgba(99, 102, 241, 0.22);
+}
+
+.stairs-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    height: 210px;
+    padding: 6px 10px 12px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.stair-bar {
+    flex: 1;
+    min-width: 32px;
+    background: linear-gradient(180deg, #60a5fa, #3b82f6);
+    border-radius: 10px 10px 4px 4px;
+    position: relative;
+    transition: height 0.6s ease, filter 0.3s ease;
+}
+
+.stair-bar::before {
+    content: attr(data-label);
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 600;
+    color: #1e3a8a;
+    font-size: 0.85rem;
+}
+
+.stair-bar::after {
+    content: attr(data-value);
+    position: absolute;
+    top: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.stair-bar.show-value::after {
+    opacity: 1;
+}
+
+.sum-display {
+    text-align: center;
+    margin-top: 10px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* 圆形周长面积 */
+.circle-lab {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 14px;
+    align-items: center;
+}
+
+.circle-stats {
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.16), rgba(56, 189, 248, 0.16));
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(129, 140, 248, 0.3);
+}
+
+.circle-stats p {
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+/* 平行四边形剪拼 */
+.parallelogram-lab {
+    display: grid;
+    grid-template-columns: 1fr 180px;
+    gap: 14px;
+    align-items: center;
+}
+
+.para-stage {
+    position: relative;
+    background: linear-gradient(135deg, rgba(236, 254, 255, 0.7), rgba(224, 231, 255, 0.7));
+    border: 1px dashed rgba(99, 102, 241, 0.35);
+    border-radius: 14px;
+    height: 220px;
+    overflow: hidden;
+}
+
+.para-shape {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 220px;
+    height: 120px;
+    transform-origin: left bottom;
+    transition: transform 0.6s ease;
+}
+
+.para-piece {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #93c5fd, #6366f1);
+    border-radius: 10px;
+    box-shadow: 0 6px 12px rgba(99, 102, 241, 0.22);
+}
+
+.para-piece-left {
+    left: 0;
+    width: 70px;
+    clip-path: polygon(0 0, 100% 0, 70% 100%, 0% 100%);
+    transition: transform 0.6s ease;
+}
+
+.para-piece-right {
+    right: 0;
+    width: 160px;
+    clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.para-rect {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    height: 120px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #22d3ee, #6366f1);
+    opacity: 0;
+    transition: width 0.6s ease, opacity 0.4s ease;
+    box-shadow: 0 6px 12px rgba(34, 211, 238, 0.24);
+}
+
+.para-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* 光的反射 */
+.light-lab {
+    background: radial-gradient(circle at 10% 20%, rgba(224, 231, 255, 0.6), rgba(226, 232, 240, 0.8));
+    border-radius: 14px;
+    padding: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* 浮力实验 */
+.buoyancy-lab {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    align-items: center;
+}
+
+.water-tank {
+    position: relative;
+    height: 230px;
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.18), rgba(59, 130, 246, 0.28));
+    border-radius: 14px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    overflow: hidden;
+}
+
+.water-surface {
+    position: absolute;
+    top: 35%;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(59, 130, 246, 0.6);
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
+}
+
+.block {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(245, 158, 11, 0.35);
+    transition: top 0.8s ease, height 0.6s ease;
+}
+
+/* 太阳影子 */
+.shadow-lab {
+    position: relative;
+    height: 240px;
+    background: linear-gradient(180deg, rgba(254, 249, 195, 0.25), rgba(226, 232, 240, 0.6));
+    border-radius: 14px;
+    border: 1px dashed rgba(148, 163, 184, 0.5);
+    overflow: hidden;
+}
+
+.ground-line {
+    position: absolute;
+    bottom: 50px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.5), rgba(107, 114, 128, 0.6));
+}
+
+.pole {
+    position: absolute;
+    bottom: 50px;
+    left: 90px;
+    width: 14px;
+    height: 120px;
+    background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+    border-radius: 6px;
+    box-shadow: 0 6px 10px rgba(59, 130, 246, 0.35);
+}
+
+.shadow {
+    position: absolute;
+    bottom: 50px;
+    left: 97px;
+    height: 10px;
+    background: linear-gradient(90deg, rgba(100, 116, 139, 0.4), rgba(100, 116, 139, 0.05));
+    border-radius: 10px;
+    transform-origin: left center;
+    transition: width 0.6s ease, transform 0.6s ease;
+}
+
+.sun {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: radial-gradient(circle, #fde68a 0%, #f59e0b 65%, #d97706 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+    transition: top 0.6s ease, left 0.6s ease;
+}
+
+/* 能量金字塔 */
+.pyramid-lab {
+    display: grid;
+    gap: 12px;
+}
+
+.pyramid-level {
+    display: grid;
+    grid-template-columns: 120px 1fr 100px;
+    gap: 10px;
+    align-items: center;
+}
+
+.level-bar {
+    height: 26px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #22d3ee, #6366f1);
+    width: 0%;
+    transition: width 0.8s ease;
+    box-shadow: 0 5px 10px rgba(99, 102, 241, 0.25);
+}
+
+.level-label {
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.level-value {
+    font-weight: 700;
+    color: #0f172a;
+    text-align: right;
+}
+
+/* 地球自转 */
+.earth-lab {
+    position: relative;
+    height: 240px;
+    background: radial-gradient(circle at 30% 30%, rgba(14, 165, 233, 0.25), rgba(99, 102, 241, 0.18));
+    border-radius: 14px;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    overflow: hidden;
+}
+
+.earth {
+    position: absolute;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #34d399, #0ea5e9 50%, #312e81 100%);
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: inset -12px -12px 22px rgba(49, 46, 129, 0.35);
+}
+
+.terminator {
+    position: absolute;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%) rotate(0deg);
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0) 50%, rgba(15, 23, 42, 0.6) 100%);
+    pointer-events: none;
+    transition: transform 0.4s linear;
+}
+
 .bar.show-value::after {
     opacity: 1;
 }

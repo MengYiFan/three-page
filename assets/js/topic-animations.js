@@ -21,7 +21,15 @@ document.addEventListener("DOMContentLoaded", () => {
     "symmetry-folding": initSymmetryFolding,
     "planet-orbits": initPlanetOrbits,
     "sound-waves": initSoundWaves,
-    "particle-states": initParticleStates
+    "particle-states": initParticleStates,
+    "arithmetic-staircase": initArithmeticStaircase,
+    "circle-measures": initCircleMeasures,
+    "parallelogram-rectangle": initParallelogramRectangle,
+    "light-reflection": initLightReflection,
+    "buoyancy-tank": initBuoyancyTank,
+    "sun-shadow": initSunShadow,
+    "energy-pyramid": initEnergyPyramid,
+    "earth-rotation": initEarthRotation
   };
   if (topic && typeof inits[topic] === "function") {
     inits[topic]();
@@ -1900,5 +1908,369 @@ function initParticleStates() {
   if (info) {
     info.textContent = "拖动温度滑块，对比三种物态的运动。";
   }
+  requestAnimationFrame(loop);
+}
+
+function initArithmeticStaircase() {
+  const a1Input = document.getElementById("arith-a1");
+  const dInput = document.getElementById("arith-d");
+  const nInput = document.getElementById("arith-n");
+  const bars = document.getElementById("arith-bars");
+  const sumEl = document.getElementById("arith-sum");
+  const nDisplay = document.getElementById("arith-n-display");
+  if (!a1Input || !dInput || !nInput || !bars) return;
+
+  function render() {
+    const a1 = Number(a1Input.value);
+    const d = Number(dInput.value);
+    const n = Number(nInput.value);
+    const terms = Array.from({ length: n }, (_, i) => a1 + i * d);
+    const maxAbs = Math.max(1, ...terms.map((t) => Math.abs(t)));
+    const sum = terms.reduce((acc, cur) => acc + cur, 0);
+
+    bars.innerHTML = "";
+    terms.forEach((value, index) => {
+      const bar = document.createElement("div");
+      bar.className = "stair-bar";
+      bar.dataset.value = value.toFixed(1).replace(/\.0$/, "");
+      bar.dataset.label = `a${index + 1}`;
+      bar.style.height = "0%";
+      bars.appendChild(bar);
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const heightPercent = Math.max(8, (Math.abs(value) / maxAbs) * 95);
+          bar.style.height = `${heightPercent}%`;
+          bar.classList.add("show-value");
+        }, index * 120);
+      });
+    });
+
+    sumEl && (sumEl.textContent = sum.toFixed(1).replace(/\.0$/, ""));
+    nDisplay && (nDisplay.textContent = `${n}`);
+  }
+
+  [a1Input, dInput, nInput].forEach((input) => input?.addEventListener("input", render));
+  render();
+}
+
+function initCircleMeasures() {
+  const slider = document.getElementById("circle-radius");
+  const canvas = document.getElementById("circle-canvas");
+  const perimeterEl = document.getElementById("circle-perimeter");
+  const areaEl = document.getElementById("circle-area");
+  if (!slider || !canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext("2d");
+  let progress = 0;
+  let animId;
+
+  function draw(radius, progressValue) {
+    const scale = 8;
+    const r = radius * scale;
+    const center = { x: canvas.width / 2, y: canvas.height / 2 + 10 };
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // area fill
+    ctx.beginPath();
+    ctx.moveTo(center.x, center.y);
+    ctx.fillStyle = "rgba(99, 102, 241, 0.25)";
+    ctx.arc(center.x, center.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progressValue);
+    ctx.closePath();
+    ctx.fill();
+
+    // outline
+    ctx.beginPath();
+    ctx.strokeStyle = "#3b82f6";
+    ctx.lineWidth = 4;
+    ctx.arc(center.x, center.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progressValue);
+    ctx.stroke();
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`r = ${radius} cm`, center.x, center.y + r + 24);
+  }
+
+  function updateText(radius) {
+    const perimeter = 2 * Math.PI * radius;
+    const area = Math.PI * radius * radius;
+    perimeterEl && (perimeterEl.textContent = perimeter.toFixed(2));
+    areaEl && (areaEl.textContent = area.toFixed(2));
+  }
+
+  function animate() {
+    cancelAnimationFrame(animId);
+    progress = 0;
+    const radius = Number(slider.value);
+    updateText(radius);
+    const step = () => {
+      progress += 0.018;
+      if (progress > 1) progress = 1;
+      draw(radius, progress);
+      if (progress < 1) {
+        animId = requestAnimationFrame(step);
+      }
+    };
+    step();
+  }
+
+  slider.addEventListener("input", animate);
+  animate();
+}
+
+function initParallelogramRectangle() {
+  const baseInput = document.getElementById("para-base");
+  const heightInput = document.getElementById("para-height");
+  const leftPiece = document.querySelector(".para-piece-left");
+  const rightPiece = document.querySelector(".para-piece-right");
+  const shape = document.getElementById("para-shape");
+  const rect = document.getElementById("para-rect");
+  const playBtn = document.getElementById("para-play");
+  const areaEl = document.getElementById("para-area");
+  if (!baseInput || !heightInput || !leftPiece || !rightPiece || !shape || !rect) return;
+
+  let baseVal = Number(baseInput.value);
+  let heightVal = Number(heightInput.value);
+  let leftWidth = 60;
+
+  function applySize() {
+    baseVal = Number(baseInput.value);
+    heightVal = Number(heightInput.value);
+    const widthPx = 30 + baseVal * 14;
+    const heightPx = 20 + heightVal * 14;
+    leftWidth = Math.max(40, widthPx * 0.3);
+    const rightWidth = Math.max(50, widthPx - leftWidth);
+
+    shape.style.width = `${widthPx}px`;
+    shape.style.height = `${heightPx}px`;
+    leftPiece.style.width = `${leftWidth}px`;
+    rightPiece.style.width = `${rightWidth}px`;
+    rightPiece.style.left = `${leftWidth}px`;
+    rect.style.height = `${heightPx}px`;
+    rect.style.width = `0px`;
+    rect.style.opacity = "0";
+    leftPiece.style.transform = "translateX(0)";
+
+    if (areaEl) {
+      areaEl.textContent = (baseVal * heightVal).toFixed(1).replace(/\.0$/, "");
+    }
+  }
+
+  function play() {
+    leftPiece.style.transform = `translateX(${Math.max(0, shape.clientWidth - leftWidth)}px)`;
+    setTimeout(() => {
+      rect.style.opacity = "1";
+      rect.style.width = `${shape.clientWidth}px`;
+    }, 220);
+  }
+
+  baseInput.addEventListener("input", applySize);
+  heightInput.addEventListener("input", applySize);
+  playBtn?.addEventListener("click", play);
+  applySize();
+}
+
+function initLightReflection() {
+  const slider = document.getElementById("light-angle");
+  const canvas = document.getElementById("light-canvas");
+  if (!slider || !canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext("2d");
+
+  function draw(angleDeg) {
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const center = { x: canvas.width / 2, y: canvas.height * 0.65 };
+    const len = 140;
+    const normalVec = { x: 0, y: -1 };
+    const incVec = {
+      x: -Math.sin(angleRad) * len,
+      y: normalVec.y * Math.cos(angleRad) * len
+    };
+    const refVec = {
+      x: Math.sin(angleRad) * len,
+      y: normalVec.y * Math.cos(angleRad) * len
+    };
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // mirror
+    ctx.beginPath();
+    ctx.moveTo(center.x, 20);
+    ctx.lineTo(center.x, canvas.height - 20);
+    ctx.strokeStyle = "#64748b";
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // normal
+    ctx.beginPath();
+    ctx.moveTo(center.x, center.y);
+    ctx.lineTo(center.x, center.y - len * 0.9);
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.8)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // incident ray
+    ctx.beginPath();
+    ctx.moveTo(center.x + incVec.x, center.y + incVec.y);
+    ctx.lineTo(center.x, center.y);
+    ctx.strokeStyle = "#3b82f6";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // reflected ray
+    ctx.beginPath();
+    ctx.moveTo(center.x, center.y);
+    ctx.lineTo(center.x + refVec.x, center.y + refVec.y);
+    ctx.strokeStyle = "#f97316";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText(`入射角 ${angleDeg}°`, center.x - 120, center.y - 12);
+    ctx.fillText(`反射角 ${angleDeg}°`, center.x + 30, center.y - 12);
+  }
+
+  slider.addEventListener("input", (event) => {
+    const angle = Number(event?.target?.value) || 30;
+    draw(angle);
+  });
+  draw(Number(slider.value));
+}
+
+function initBuoyancyTank() {
+  const slider = document.getElementById("buoy-density");
+  const block = document.getElementById("buoy-block");
+  const ratioEl = document.getElementById("buoy-ratio");
+  const tank = block?.parentElement;
+  if (!slider || !block || !tank) return;
+
+  const waterDensity = 1.0;
+  const baseHeight = block.clientHeight || 80;
+
+  function update() {
+    const density = Number(slider.value);
+    const submergeRatio = Math.min(1, density / waterDensity);
+    const exposed = Math.max(0, 1 - submergeRatio);
+    const heightPx = baseHeight * (0.65 + 0.35 * submergeRatio);
+    block.style.height = `${heightPx}px`;
+
+    const waterTop = tank.clientHeight * 0.35;
+    const waterBottom = tank.clientHeight - 8;
+    const submergedHeight = heightPx * submergeRatio;
+    const topPosition = Math.min(
+      waterBottom - heightPx,
+      waterTop + submergedHeight - heightPx
+    );
+    block.style.top = `${topPosition}px`;
+
+    if (ratioEl) {
+      ratioEl.textContent = `${Math.round(exposed * 100)}%`;
+    }
+  }
+
+  slider.addEventListener("input", update);
+  update();
+}
+
+function initSunShadow() {
+  const slider = document.getElementById("sun-angle");
+  const sun = document.getElementById("sun-dot");
+  const shadow = document.getElementById("shadow");
+  const shadowLengthEl = document.getElementById("shadow-length");
+  if (!slider || !sun || !shadow) return;
+
+  const poleHeightMeters = 4;
+  const pixelsPerMeter = 30;
+
+  function update(angleDeg) {
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const lengthMeters = poleHeightMeters / Math.tan(angleRad);
+    const lengthPx = Math.min(320, Math.max(10, lengthMeters * pixelsPerMeter));
+    shadow.style.width = `${lengthPx}px`;
+    shadow.style.transform = `rotate(${Math.max(5, 90 - angleDeg)}deg)`;
+
+    const arcRadius = 120;
+    const center = { x: 120, y: 220 };
+    sun.style.left = `${center.x + arcRadius * Math.cos(angleRad)}px`;
+    sun.style.top = `${center.y - arcRadius * Math.sin(angleRad)}px`;
+
+    shadowLengthEl && (shadowLengthEl.textContent = lengthMeters.toFixed(2));
+  }
+
+  slider.addEventListener("input", (event) => {
+    const value = Number(event?.target?.value) || 30;
+    update(value);
+  });
+  update(Number(slider.value));
+}
+
+function initEnergyPyramid() {
+  const slider = document.getElementById("energy-input");
+  const bars = {
+    producer: document.getElementById("energy-producer"),
+    primary: document.getElementById("energy-primary"),
+    secondary: document.getElementById("energy-secondary"),
+    tertiary: document.getElementById("energy-tertiary")
+  };
+  const values = {
+    producer: document.getElementById("energy-producer-value"),
+    primary: document.getElementById("energy-primary-value"),
+    secondary: document.getElementById("energy-secondary-value"),
+    tertiary: document.getElementById("energy-tertiary-value")
+  };
+  if (!slider) return;
+
+  function update() {
+    const baseEnergy = Number(slider.value);
+    const energies = [baseEnergy, baseEnergy * 0.1, baseEnergy * 0.01, baseEnergy * 0.001];
+    const labels = ["producer", "primary", "secondary", "tertiary"];
+    labels.forEach((label, index) => {
+      const widthPercent = Math.max(4, (energies[index] / baseEnergy) * 100);
+      if (bars[label]) {
+        bars[label].style.width = `${widthPercent}%`;
+      }
+      if (values[label]) {
+        values[label].textContent = `${energies[index].toFixed(1)} kJ`;
+      }
+    });
+  }
+
+  slider.addEventListener("input", update);
+  update();
+}
+
+function initEarthRotation() {
+  const speedSlider = document.getElementById("earth-speed");
+  const playBtn = document.getElementById("earth-play");
+  const terminator = document.getElementById("terminator");
+  const earth = document.getElementById("earth");
+  if (!speedSlider || !playBtn || !terminator || !earth) return;
+
+  let speed = Number(speedSlider.value);
+  let playing = true;
+  let angle = 0;
+  let last = 0;
+
+  function loop(timestamp) {
+    if (!last) last = timestamp;
+    const delta = timestamp - last;
+    last = timestamp;
+    if (playing) {
+      angle = (angle + delta * 0.018 * speed) % 360;
+      terminator.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+      earth.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  speedSlider.addEventListener("input", (event) => {
+    speed = Number(event?.target?.value) || 1;
+  });
+
+  playBtn.addEventListener("click", () => {
+    playing = !playing;
+  });
+
   requestAnimationFrame(loop);
 }

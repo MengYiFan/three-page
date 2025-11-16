@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平行四边形变长方形 - 数学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+</head>
+<body data-topic="parallelogram-rectangle">
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>平行四边形变长方形</h1>
+            <p class="subtitle">剪下一角，平移成直角</p>
+            <p class="author">课堂情境：六年级《平行四边形面积》</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>题目描述</h2>
+                <div class="explanation-content">
+                    <p>点击“剪拼”按钮，把平行四边形的一角切下并平移到另一侧，形成长方形。</p>
+                    <p>先完成一次动画，再调整底和高，观察面积保持不变但形状变得更容易计算。</p>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>相关原理</h2>
+                <div class="explanation-content">
+                    <p>平行四边形面积：<strong>S = 底 × 高</strong>。剪下一个直角三角形并平移，不改变底和高，面积保持。</p>
+                    <p>动画体现“保持底与高”即可保持面积，为后续“移项到长方形”的口算奠定直观基础。</p>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>示例分析</h2>
+                <div class="explanation-content">
+                    <ol>
+                        <li>设置底 8cm，高 4cm，面积 32cm²。</li>
+                        <li>剪下左侧三角形，向右平移，拼成长方形。</li>
+                        <li>长方形边长仍为 8 和 4，面积依旧 32cm²。</li>
+                    </ol>
+                    <p class="answer-summary">通过剪拼，我们先完成一次形状转换，再理解“底 × 高”对面积的决定性。</p>
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展练习</h2>
+                <div class="knowledge-content">
+                    <ul>
+                        <li>尝试不同倾斜角度的平行四边形，确认剪拼后矩形始终有相同面积。</li>
+                        <li>对比菱形、矩形、平行四边形的面积公式，寻找共通点。</li>
+                        <li>思考：如果把平行四边形沿高剪开，再平移，能否得到同样的结果？</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="viz-section">
+                <h2>交互动画：剪拼平行四边形</h2>
+                <div class="viz-card">
+                    <div class="form-grid">
+                        <label>底 (cm)
+                            <input type="range" id="para-base" min="4" max="12" value="8">
+                        </label>
+                        <label>高 (cm)
+                            <input type="range" id="para-height" min="2" max="8" value="4">
+                        </label>
+                    </div>
+                    <div class="parallelogram-lab">
+                        <div class="para-stage" aria-label="平行四边形剪拼区域">
+                            <div class="para-shape" id="para-shape">
+                                <div class="para-piece para-piece-left"></div>
+                                <div class="para-piece para-piece-right"></div>
+                            </div>
+                            <div class="para-rect" id="para-rect"></div>
+                        </div>
+                        <div class="para-actions">
+                            <button id="para-play" class="btn btn-small" type="button">剪拼一次</button>
+                            <p class="viz-note">完成一次剪拼后，可调整底和高再播放下一次。</p>
+                            <p>面积：<strong id="para-area">0</strong> cm²</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>保持统一的色差风格，让剪拼动画更直观。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/topic-animations.js"></script>
+</body>
+</html>
