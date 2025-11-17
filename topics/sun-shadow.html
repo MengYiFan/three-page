@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>太阳高度与影子长度 - 科学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/pigeonhole.css">
 </head>
 <body data-topic="sun-shadow">
@@ -13,23 +14,24 @@
                 <a href="../index.html" class="back-link">← 返回题目列表</a>
             </nav>
             <h1>太阳高度与影子长度</h1>
-            <p class="subtitle">太阳越低，影子越长</p>
-            <p class="author">课堂情境：科学《昼夜与影子》</p>
+            <p class="subtitle">完成一次影子伸缩，再换角度继续</p>
+            <p class="author">课堂情境：五年级科学《太阳高度》</p>
         </header>
 
         <main class="main-content">
             <section class="problem-section">
                 <h2>题目描述</h2>
                 <div class="explanation-content">
-                    <p>调整太阳高度角，观察一根旗杆在地面上的影子长度。记录上午、中午、傍晚影子的差异。</p>
+                    <p>拖动太阳高度角，路灯杆的影子长度会随之变化，动画模拟一天中影子的移动。</p>
+                    <p>先完成一次影子伸缩，再尝试新的角度，体会角度越低影子越长的规律。</p>
                 </div>
             </section>
 
             <section class="explanation-section">
                 <h2>相关原理</h2>
                 <div class="explanation-content">
-                    <p>影子长度与太阳高度角成反比：<code>影长 = 高度 ÷ tan(太阳高度角)</code>。</p>
-                    <p>太阳越高，光线越“垂直”，影子越短；太阳越低，影子被拉得更长。</p>
+                    <p>影子长度可由直角三角形得到：<strong>影长 = 高度 ÷ tan(太阳高度角)</strong>。</p>
+                    <p>当太阳接近地平线，角度趋近 0°，tan 值变小，影子变长；正午角度最大，影子最短。</p>
                 </div>
             </section>
 
@@ -37,11 +39,11 @@
                 <h2>示例分析</h2>
                 <div class="explanation-content">
                     <ol>
-                        <li>太阳高度角 70° 时，影子长度约为旗杆高度的一三分之一。</li>
-                        <li>高度角降到 20°，影子会超过旗杆高度。</li>
-                        <li>在一天中，中午影子最短，清晨和傍晚影子较长。</li>
+                        <li>设路灯高 4m，太阳高度 60°，影子约 2.31m。</li>
+                        <li>角度降到 20°，影子增至 10.99m，明显拉长。</li>
+                        <li>角度升到 80°，影子缩短到 0.70m，几乎在脚下。</li>
                     </ol>
-                    <p class="answer-summary">用可调角度的阳光，理解三角函数在生活中的应用。</p>
+                    <p class="answer-summary">完成一次角度拖动后，学生能在视觉刺激中理解影子长短与太阳高度的函数关系。</p>
                 </div>
             </section>
 
@@ -49,35 +51,35 @@
                 <h2>拓展练习</h2>
                 <div class="knowledge-content">
                     <ul>
-                        <li>把旗杆高度改成 6 米，影子会如何变化？</li>
-                        <li>测量自己在操场中的影子，估算当前太阳高度角。</li>
-                        <li>思考：冬天和夏天同一时间的影子长度是否相同？</li>
+                        <li>尝试用影子长度反推太阳高度角，练习反三角函数的应用。</li>
+                        <li>记录一天中多次测量的影子长度，画出变化曲线。</li>
+                        <li>思考：高纬度地区的正午影子为何更长？</li>
                     </ul>
                 </div>
             </section>
 
             <section class="viz-section">
-                <h2>交互动画：影子模拟</h2>
-                <div class="viz-card shadow-lab">
-                    <div class="control-row">
-                        <label>太阳高度角
-                            <input type="range" id="sun-angle" min="10" max="80" step="1" value="55">
-                            <span id="sun-angle-value">55°</span>
+                <h2>交互动画：拖动太阳位置</h2>
+                <div class="viz-card">
+                    <div class="form-grid">
+                        <label>太阳高度角 (°)
+                            <input type="range" id="sun-angle" min="5" max="80" value="45">
                         </label>
-                        <label>旗杆高度 (米)
-                            <input type="range" id="sun-height" min="2" max="8" step="0.5" value="4">
-                            <span id="sun-height-value">4 m</span>
-                        </label>
-                        <button class="btn btn-small" id="sun-reset" type="button">重置正午</button>
                     </div>
-                    <canvas id="sun-canvas" width="420" height="300" aria-label="影子模拟"></canvas>
-                    <p class="shadow-info" id="shadow-info">阳光角度决定影子长度</p>
+                    <div class="shadow-lab" aria-label="影子演示场景">
+                        <div class="sun" id="sun-dot"></div>
+                        <div class="pole"></div>
+                        <div class="shadow" id="shadow"></div>
+                        <div class="ground-line"></div>
+                    </div>
+                    <p class="viz-note">黄色小球代表太阳，蓝色为路灯杆，灰色为影子。</p>
+                    <p>当前影子长度：<strong id="shadow-length">0</strong> 米</p>
                 </div>
             </section>
         </main>
 
         <footer class="page-footer">
-            <p>让阳光角度“可见”，帮助学生把影子变化和太阳位置联系起来。</p>
+            <p>保持统一色差风格，突出太阳、路灯与影子的对比。</p>
         </footer>
     </div>
     <script src="../assets/js/topic-animations.js"></script>
