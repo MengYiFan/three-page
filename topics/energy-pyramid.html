@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生态能量金字塔 - 科学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+</head>
+<body data-topic="energy-pyramid">
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>生态能量金字塔</h1>
+            <p class="subtitle">完成一次能量下传，再换输入值体验 10% 法则</p>
+            <p class="author">课堂情境：七年级生物《食物链与能量流动》</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>题目描述</h2>
+                <div class="explanation-content">
+                    <p>设置初级生产者的能量输入，动画会逐层向上递减，形成直观的金字塔。</p>
+                    <p>完成一次能量流动后，可以再次修改输入值并重播，体验能量流动的“逐级递减”。</p>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>相关原理</h2>
+                <div class="explanation-content">
+                    <p>生态系统中能量流动具有单向性和递减性，每升高一级只有约 10% 能量被下一营养级利用。</p>
+                    <p>能量金字塔越往上越窄，说明高级消费者数量与可用能量都更少。</p>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>示例分析</h2>
+                <div class="explanation-content">
+                    <ol>
+                        <li>输入 1000 千焦，一级消费者获得约 100 千焦，二级 10 千焦，三级仅 1 千焦。</li>
+                        <li>金字塔宽度随能量减少而收窄，体现能量损失。</li>
+                        <li>调整输入为 5000 千焦，所有层级同步放大，但递减比例不变。</li>
+                    </ol>
+                    <p class="answer-summary">先完成一次动画，再换输入值，有助于巩固“能量只流动、不循环”且逐级减少的概念。</p>
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展练习</h2>
+                <div class="knowledge-content">
+                    <ul>
+                        <li>尝试设置极小的输入能量，观察金字塔上层是否几乎消失。</li>
+                        <li>比较 10% 法则与现实数据（如 5%~15%），讨论能量损失的原因。</li>
+                        <li>思考：为什么“植物—草食动物—肉食动物”链条通常不超过四级？</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="viz-section">
+                <h2>交互动画：堆出能量塔</h2>
+                <div class="viz-card">
+                    <div class="form-grid">
+                        <label>初级生产者能量 (千焦)
+                            <input type="range" id="energy-input" min="200" max="8000" value="2000" step="100">
+                        </label>
+                    </div>
+                    <div class="pyramid-lab" aria-label="能量金字塔展示">
+                        <div class="pyramid-level" data-level="producer">
+                            <span class="level-label">生产者</span>
+                            <div class="level-bar" id="energy-producer"></div>
+                            <span class="level-value" id="energy-producer-value"></span>
+                        </div>
+                        <div class="pyramid-level" data-level="primary">
+                            <span class="level-label">一级消费者</span>
+                            <div class="level-bar" id="energy-primary"></div>
+                            <span class="level-value" id="energy-primary-value"></span>
+                        </div>
+                        <div class="pyramid-level" data-level="secondary">
+                            <span class="level-label">二级消费者</span>
+                            <div class="level-bar" id="energy-secondary"></div>
+                            <span class="level-value" id="energy-secondary-value"></span>
+                        </div>
+                        <div class="pyramid-level" data-level="tertiary">
+                            <span class="level-label">三级消费者</span>
+                            <div class="level-bar" id="energy-tertiary"></div>
+                            <span class="level-value" id="energy-tertiary-value"></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>统一的蓝紫系色差，让能量递减层次清晰可辨。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/topic-animations.js"></script>
+</body>
+</html>

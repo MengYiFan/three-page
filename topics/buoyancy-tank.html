@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浮力实验：沉浮高度 - 科学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+</head>
+<body data-topic="buoyancy-tank">
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>浮力实验：沉浮高度</h1>
+            <p class="subtitle">调节密度，完成一次下沉再重新尝试</p>
+            <p class="author">课堂情境：八年级物理《阿基米德原理》</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>题目描述</h2>
+                <div class="explanation-content">
+                    <p>拖动物块密度滑块，物块会缓慢沉入水中，浮力与重力的平衡决定露出水面的高度。</p>
+                    <p>完成一次动画后，再尝试新的密度，体验“密度小于水会浮起，密度大于水会下沉”。</p>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>相关原理</h2>
+                <div class="explanation-content">
+                    <p>浮力大小等于排开液体的重量：<strong>F<sub>浮</sub> = ρ × g × V<sub>排</sub></strong>。</p>
+                    <p>当物体平均密度小于水时，排开的水重大于重力，物体上浮直至浮力 = 重力；大于水则下沉。</p>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>示例分析</h2>
+                <div class="explanation-content">
+                    <ol>
+                        <li>设物块密度 0.6 g/cm³，小于水，最终有大部分露出水面。</li>
+                        <li>密度调到 1.2 g/cm³，大于水，物块完全下沉。</li>
+                        <li>密度接近 1.0 g/cm³ 时，物块几乎悬浮在水中。</li>
+                    </ol>
+                    <p class="answer-summary">完成一次下沉后再调节密度，可以更好理解浮力与排水量的实时关系。</p>
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展练习</h2>
+                <div class="knowledge-content">
+                    <ul>
+                        <li>试着把物块密度快速来回切换，观察水面溅起波纹的反馈。</li>
+                        <li>思考：若在盐水中实验，因水密度增大，物块会更容易浮起吗？</li>
+                        <li>比较木块、蜡块、金属块的实验数据，归纳密度与浮沉的关系。</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="viz-section">
+                <h2>交互动画：水槽里的沉浮</h2>
+                <div class="viz-card">
+                    <div class="form-grid">
+                        <label>物块密度 (g/cm³)
+                            <input type="range" id="buoy-density" min="0.3" max="1.5" value="0.8" step="0.05">
+                        </label>
+                    </div>
+                    <div class="buoyancy-lab">
+                        <div class="water-tank">
+                            <div class="water-surface"></div>
+                            <div class="block" id="buoy-block"></div>
+                        </div>
+                        <p class="viz-note">蓝色区域代表水，块体高度随密度变化；提示文字实时显示浮出比例。</p>
+                        <p>露出水面的比例：<strong id="buoy-ratio">0%</strong></p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>保持统一色差，让水与物块的对比清晰易读。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/topic-animations.js"></script>
+</body>
+</html>
