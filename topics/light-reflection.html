@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光的反射 - 科学教学示例</title>
+    <link rel="stylesheet" href="../assets/css/pigeonhole.css">
+</head>
+<body data-topic="light-reflection">
+    <div class="container">
+        <header class="page-header">
+            <nav class="top-nav">
+                <a href="../index.html" class="back-link">← 返回题目列表</a>
+            </nav>
+            <h1>光的反射</h1>
+            <p class="subtitle">入射角等于反射角，镜面前的光路演示</p>
+            <p class="author">课堂情境：物理与科学《光的反射》</p>
+        </header>
+
+        <main class="main-content">
+            <section class="problem-section">
+                <h2>题目描述</h2>
+                <div class="explanation-content">
+                    <p>调节入射角，观察光线射向平面镜后的反射路径。记录入射角与反射角的关系。</p>
+                </div>
+            </section>
+
+            <section class="explanation-section">
+                <h2>相关原理</h2>
+                <div class="explanation-content">
+                    <p>反射定律：入射光线、反射光线与法线在同一平面内，且入射角等于反射角。</p>
+                    <p>法线是垂直于镜面的直线，可帮助测量角度。</p>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <h2>示例分析</h2>
+                <div class="explanation-content">
+                    <ol>
+                        <li>入射角 30° 时，反射角也为 30°。</li>
+                        <li>入射角增大，光线在镜面上滑动更快，反射方向也随之变化。</li>
+                        <li>当入射角为 0°，光线沿法线返回。</li>
+                    </ol>
+                    <p class="answer-summary">反射定律用一条镜面对称的光路即可直观验证。</p>
+                </div>
+            </section>
+
+            <section class="knowledge-section">
+                <h2>拓展练习</h2>
+                <div class="knowledge-content">
+                    <ul>
+                        <li>在光路上放置一个小球，预测反射后的行进方向。</li>
+                        <li>思考：凹面镜、凸面镜的反射是否遵循同样的角度规律？</li>
+                        <li>将入射角调为 45°，画出法线与镜面的夹角。</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="viz-section">
+                <h2>交互动画：镜面反射实验</h2>
+                <div class="viz-card light-lab">
+                    <div class="control-row">
+                        <label>入射角
+                            <input type="range" id="light-angle" min="5" max="80" step="1" value="35">
+                            <span id="light-angle-value">35°</span>
+                        </label>
+                        <button id="light-reset" class="btn btn-small" type="button">回到 0°</button>
+                    </div>
+                    <canvas id="light-canvas" width="420" height="280" aria-label="光的反射"></canvas>
+                    <p class="light-info" id="light-info">入射角 = 反射角</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>用可拖动的光线演示反射定律，辅助学生建立“对称角度”的概念。</p>
+        </footer>
+    </div>
+    <script src="../assets/js/topic-animations.js"></script>
+</body>
+</html>
