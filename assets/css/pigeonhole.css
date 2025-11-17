@@ -1755,3 +1755,122 @@ section {
     padding: 4px 8px;
     border-radius: 8px;
 }
+
+/* 行星公转 3D 互动区域 */
+.orbit-3d-shell {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.3fr) minmax(260px, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+@media (max-width: 860px) {
+    .orbit-3d-shell {
+        grid-template-columns: 1fr;
+    }
+}
+
+.orbit-3d-scene {
+    position: relative;
+}
+
+.orbit-3d {
+    width: 100%;
+    height: 420px;
+    border-radius: 18px;
+    background: radial-gradient(circle at 50% 35%, #2f3d75 0%, #121a39 45%, #060912 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 14px 30px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+}
+
+.orbit-3d.day-mode {
+    background: radial-gradient(circle at 50% 30%, #e3f2fd 0%, #c5cae9 38%, #9fa8da 100%);
+    box-shadow: inset 0 0 0 1px rgba(76, 92, 175, 0.18), 0 14px 30px rgba(63, 81, 181, 0.2);
+}
+
+.orbit-legend {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 8px;
+    color: #5c6bc0;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.orbit-3d-panel {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    border: 1px solid #e0e7ff;
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 10px 24px rgba(92, 107, 192, 0.1);
+}
+
+.orbit-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    align-items: center;
+}
+
+.orbit-controls-grid .control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.orbit-controls-grid .control.checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.orbit-controls-grid input[type="range"] {
+    width: 100%;
+    accent-color: #5c6bc0;
+}
+
+.orbit-progress {
+    background: rgba(92, 107, 192, 0.08);
+    border: 1px dashed rgba(92, 107, 192, 0.4);
+    color: #303f9f;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-weight: 700;
+}
+
+.orbit-story {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px 14px;
+    border: 1px solid #e0e7ff;
+    color: #374151;
+    line-height: 1.5;
+    box-shadow: inset 0 2px 6px rgba(92, 107, 192, 0.06);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #5c6bc0, #3949ab);
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    box-shadow: 0 8px 16px rgba(92, 107, 192, 0.25);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #26c6da, #00acc1);
+    color: #fff;
+    border: none;
+    padding: 10px 14px;
+    box-shadow: 0 8px 16px rgba(0, 172, 193, 0.25);
+}
+
+.btn-primary:hover,
+.btn-secondary:hover {
+    transform: translateY(-1px);
+}
