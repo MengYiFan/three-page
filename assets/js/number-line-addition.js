@@ -33,8 +33,10 @@ function initNumberLineGame() {
   };
 
   const setBunnyPosition = (el, value) => {
-    const percent = Math.max(0, Math.min(20, value)) / 20 * 100;
-    el.style.transform = `translateX(${percent}%) translateX(-50%)`;
+    const clamped = Math.max(0, Math.min(20, value));
+    const percent = (clamped / 20) * 100;
+    el.style.left = `${percent}%`;
+    el.style.transform = "translateX(-50%)";
   };
 
   const animateHop = () => {

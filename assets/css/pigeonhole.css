@@ -422,14 +422,13 @@ section h2 {
     padding: 20px;
     text-align: center;
     color: #666;
-    font-size: 0.9rem;
+    font-size: 13px;
     border-top: 1px solid #e0e0e0;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
     .container {
-        margin: 10px;
         border-radius: 15px;
     }
 
@@ -914,11 +913,26 @@ section {
     width: 160px;
     height: 160px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #34d399, #0ea5e9 50%, #312e81 100%);
+    background:
+        conic-gradient(
+            from 45deg,
+            #0ea5e9 0deg 60deg,
+            #1e40af 60deg 90deg,
+            #34d399 90deg 140deg,
+            #0ea5e9 140deg 200deg,
+            #22c55e 200deg 230deg,
+            #0ea5e9 230deg 300deg,
+            #065f46 300deg 330deg,
+            #0ea5e9 330deg 360deg
+        ),
+        radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.3), transparent 45%),
+        radial-gradient(circle at 70% 70%, rgba(0, 0, 0, 0.35), transparent 55%),
+        #0ea5e9;
     top: 30px;
     left: 50%;
     transform: translateX(-50%);
     box-shadow: inset -12px -12px 22px rgba(49, 46, 129, 0.35);
+    overflow: hidden;
 }
 
 .terminator {
@@ -928,10 +942,10 @@ section {
     border-radius: 50%;
     top: 30px;
     left: 50%;
-    transform: translateX(-50%) rotate(0deg);
-    background: linear-gradient(90deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0) 50%, rgba(15, 23, 42, 0.6) 100%);
+    transform: translate(-50%, 0) rotate(23deg);
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0) 45%, rgba(15, 23, 42, 0.65) 100%);
     pointer-events: none;
-    transition: transform 0.4s linear;
+    mix-blend-mode: multiply;
 }
 
 .bar.show-value::after {

@@ -2255,10 +2255,14 @@ function initEarthRotation() {
   const earth = document.getElementById("earth");
   if (!speedSlider || !playBtn || !terminator || !earth) return;
 
-  let speed = Number(speedSlider.value);
+  const AXIS_TILT = 23.5;
+  let speed = Number(speedSlider.value) || 1;
   let playing = true;
   let angle = 0;
   let last = 0;
+
+  // 固定分界线倾角，模拟地轴倾斜
+  terminator.style.transform = `translate(-50%, 0) rotate(${AXIS_TILT}deg)`;
 
   function loop(timestamp) {
     if (!last) last = timestamp;
@@ -2266,7 +2270,6 @@ function initEarthRotation() {
     last = timestamp;
     if (playing) {
       angle = (angle + delta * 0.018 * speed) % 360;
-      terminator.style.transform = `translateX(-50%) rotate(${angle}deg)`;
       earth.style.transform = `translateX(-50%) rotate(${angle}deg)`;
     }
     requestAnimationFrame(loop);
@@ -2278,6 +2281,7 @@ function initEarthRotation() {
 
   playBtn.addEventListener("click", () => {
     playing = !playing;
+    playBtn.textContent = playing ? "暂停" : "继续旋转";
   });
 
   requestAnimationFrame(loop);
