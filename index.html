@@ -45,6 +45,7 @@
                     <button class="filter-btn active" data-filter="all" type="button">全部</button>
                     <button class="filter-btn" data-filter="math" type="button">数学</button>
                     <button class="filter-btn" data-filter="science" type="button">科学</button>
+                    <button class="random-btn" id="random-entry" type="button" aria-label="随机进入当前分类的题目">随机入口</button>
                 </div>
 
                 <div class="problem-list">
@@ -469,6 +470,7 @@
       document.addEventListener("DOMContentLoaded", () => {
         const buttons = document.querySelectorAll(".filter-btn");
         const cards = document.querySelectorAll(".problem-card");
+        const randomBtn = document.getElementById("random-entry");
         let currentFilter = "all";
 
         const applyFilter = (filter) => {
@@ -489,8 +491,26 @@
           });
         });
 
+        randomBtn?.addEventListener("click", () => {
+          const pool = Array.from(cards).filter((card) => {
+            const category = card.dataset.category || "math";
+            const match = currentFilter === "all" || category === currentFilter;
+            return match && !card.classList.contains("is-hidden");
+          });
+          if (!pool.length) return;
+          const target = pool[Math.floor(Math.random() * pool.length)];
+          cards.forEach((card) => card.classList.remove("is-highlight"));
+          target.classList.add("is-highlight");
+          const link = target.querySelector("a");
+          setTimeout(() => {
+            if (link) {
+              window.location.href = link.getAttribute("href");
+            }
+          }, 320);
+        });
+
         applyFilter(currentFilter);
       });
     </script>
-</body>
+  </body>
 </html>

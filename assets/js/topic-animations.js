@@ -30,6 +30,14 @@ document.addEventListener("DOMContentLoaded", () => {
     "sun-shadow": initSunShadow,
     "energy-pyramid": initEnergyPyramid,
     "earth-rotation": initEarthRotation
+    "arithmetic-stairs": initArithmeticStairs,
+    "percent-donut": initPercentDonut,
+    "coordinate-transform": initCoordinateTransform,
+    "line-slope": initLineSlope,
+    "light-reflection": initLightReflection,
+    "sun-shadow": initSunShadow,
+    "buoyancy-density": initBuoyancyDensity,
+    "circuit-brightness": initCircuitBrightness
   };
   if (topic && typeof inits[topic] === "function") {
     inits[topic]();
