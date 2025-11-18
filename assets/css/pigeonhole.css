@@ -141,6 +141,13 @@ button {
     min-width: 130px;
 }
 
+.btn.ghost {
+    background: #ffffff;
+    color: #6c63ff;
+    border: 1px solid #e0e0ff;
+    box-shadow: none;
+}
+
 .btn:disabled {
     cursor: not-allowed;
     box-shadow: none;
@@ -562,6 +569,34 @@ section {
 
 .btn-small:active {
     transform: scale(0.97);
+}
+
+.three-stage {
+    width: 100%;
+    min-height: 320px;
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(135deg, #f7faff 0%, #eef2ff 100%);
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px rgba(108, 99, 255, 0.05), 0 10px 25px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    position: relative;
+    margin: 12px 0;
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 10px;
+    margin: 10px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.control-row label {
+    font-weight: bold;
+    color: #5c6bc0;
 }
 
 .bar-chart {
