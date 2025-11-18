@@ -1,2539 +1,1357 @@
-// 通用交互动画脚本，根据 body data-topic 初始化对应场景
+// 统一的 3D 互动动画脚本（除滑滑梯与地球自转外的全部 topic）
 
-document.addEventListener("DOMContentLoaded", () => {
-  const topic = document.body.dataset.topic;
-  const inits = {
-    "average-jump": initAverageJump,
-    "fractions-pizza": initFractionPizza,
-    "rectangle-area": initRectanglePlayground,
-    "lever-balance": initLeverSimulation,
-    "water-cycle": initWaterCycle,
-    "pythagoras": initPythagorasDemo,
-    "multiplication-arrays": initMultiplicationArrays,
-    "fraction-addition": initFractionAddition,
-    "time-conversion": initTimeConversion,
-    "magnet-experiment": initMagnetExperiment,
-    "plant-transpiration": initPlantTranspiration,
-    "triangle-angle-sum": initTriangleAngleSum,
-    "place-value-machine": initPlaceValueMachine,
-    "probability-spinner": initProbabilitySpinner,
-    "speed-distance": initSpeedDistance,
-    "symmetry-folding": initSymmetryFolding,
-    "planet-orbits": initPlanetOrbits,
-    "sound-waves": initSoundWaves,
-    "particle-states": initParticleStates,
-    "arithmetic-staircase": initArithmeticStaircase,
-    "circle-measures": initCircleMeasures,
-    "parallelogram-rectangle": initParallelogramRectangle,
-    "light-reflection": initLightReflection,
-    "buoyancy-tank": initBuoyancyTank,
-    "sun-shadow": initSunShadow,
-    "energy-pyramid": initEnergyPyramid,
-    "earth-rotation": initEarthRotation
-  };
-  if (topic && typeof inits[topic] === "function") {
-    inits[topic]();
+let threePromise = null;
+
+function ensureThree() {
+  if (window.THREE) return Promise.resolve(window.THREE);
+  if (!threePromise) {
+    threePromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/three@0.161.0/build/three.min.js";
+      script.onload = () => resolve(window.THREE);
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
   }
-});
+  return threePromise;
+}
+
+function ensureStage(id, fallbackSelector = ".viz-card") {
+  let container = document.getElementById(id);
+  if (!container) {
+    const host = document.querySelector(fallbackSelector) || document.querySelector(".main-content") || document.body;
+    container = document.createElement("div");
+    container.id = id;
+    container.className = "three-stage";
+    host.prepend(container);
+  } else {
+    container.classList.add("three-stage");
+  }
+  return container;
+}
+
+function getOrCreateButton(id, label, anchor) {
+  let btn = document.getElementById(id);
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = id;
+    btn.type = "button";
+    btn.className = "btn btn-small ghost";
+    btn.textContent = label;
+    (anchor || document.querySelector(".viz-card") || document.querySelector(".main-content") || document.body).appendChild(btn);
+  }
+  return btn;
+}
+
+function createPlaySpace(containerId, options = {}) {
+  const container = ensureStage(containerId, options.hostSelector);
+  if (!container) return Promise.resolve(null);
+
+  return ensureThree().then((THREE) => {
+    const width = container.clientWidth || container.offsetWidth || 760;
+    const height = options.height || Math.max(320, Math.floor(width * (options.aspect || 9 / 16)));
+
+    container.innerHTML = "";
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setSize(width, height);
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(options.background || 0xf5f7fb);
+
+    const camera = new THREE.PerspectiveCamera(options.fov || 45, width / height, 0.1, 200);
+    const pos = options.cameraPos || [0, 8, 16];
+    camera.position.set(pos[0], pos[1], pos[2]);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+    scene.add(ambient);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(6, 12, 6);
+    scene.add(dir);
+
+    if (options.showGrid !== false) {
+      const grid = new THREE.GridHelper(40, 20, 0xcfd8dc, 0xe0e0e0);
+      grid.position.y = 0;
+      scene.add(grid);
+    }
+
+    const clock = new THREE.Clock();
+    const updaters = [];
+
+    function resize() {
+      const w = container.clientWidth || width;
+      const h = options.height || Math.max(320, Math.floor(w * (options.aspect || 9 / 16)));
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", resize);
+
+    function render() {
+      requestAnimationFrame(render);
+      const delta = clock.getDelta();
+      const elapsed = clock.elapsedTime;
+      updaters.forEach((fn) => fn(delta, elapsed));
+      renderer.render(scene, camera);
+    }
+    render();
+
+    return { THREE, scene, camera, renderer, updaters, container };
+  });
+}
+
+function addGroundPlane({ THREE, scene }, color = 0xffffff, size = 24) {
+  const geo = new THREE.PlaneGeometry(size, size);
+  const mat = new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.01;
+  scene.add(mesh);
+  return mesh;
+}
+
+const makePulse = (mesh, strength = 0.2, speed = 2) => (delta, elapsed) => {
+  const scale = 1 + Math.sin(elapsed * speed) * strength;
+  mesh.scale.set(scale, scale, scale);
+};
+
+const spin = (mesh, speed = 0.6) => (delta) => {
+  mesh.rotation.y += speed * delta;
+};
+
+const gentleBob = (mesh, base, axis = "y") => (delta, elapsed) => {
+  const offset = Math.sin(elapsed * 1.8) * 0.25;
+  mesh.position[axis] = base + offset;
+};
+
+function spreadRing({ THREE, scene }, radius, count, color) {
+  const group = new THREE.Group();
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count;
+    const geo = new THREE.SphereGeometry(0.25, 12, 12);
+    const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.3 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(Math.cos(angle) * radius, 0.25, Math.sin(angle) * radius);
+    group.add(mesh);
+  }
+  scene.add(group);
+  return group;
+}
+
+function updateValueText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
 
 function initAverageJump() {
-  const container = document.getElementById("average-chart");
-  if (!container) return;
-
-  const data = [
-    { name: "小雅", value: 96 },
-    { name: "小俊", value: 84 },
-    { name: "小敏", value: 90 },
-    { name: "小杰", value: 110 }
-  ];
-  const average = data.reduce((sum, item) => sum + item.value, 0) / data.length;
-  const maxValue = Math.max(...data.map((item) => item.value));
-
-  const replayBtn = document.getElementById("replay-average");
   const info = document.getElementById("average-info");
+  const replayBtn = getOrCreateButton("replay-average", "重新播放跳跃", document.querySelector(".viz-card"));
+  const data = [
+    { name: "小雅", value: 96, color: 0x4fc3f7 },
+    { name: "小俊", value: 84, color: 0xffb74d },
+    { name: "小敏", value: 90, color: 0x81c784 },
+    { name: "小杰", value: 110, color: 0xf06292 }
+  ];
+  const average = data.reduce((s, v) => s + v.value, 0) / data.length;
+  const max = Math.max(...data.map((d) => d.value));
 
-  container.innerHTML = "";
-  const avgLine = document.createElement("div");
-  avgLine.className = "avg-line";
-  avgLine.style.bottom = `${(average / maxValue) * 100}%`;
-  avgLine.innerHTML = `<span>平均：${average.toFixed(1)} 次</span>`;
+  createPlaySpace("average-chart", { cameraPos: [0, 7, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 26);
 
-  data.forEach((item) => {
-    const bar = document.createElement("div");
-    bar.className = "bar";
-    bar.dataset.value = item.value;
-    bar.dataset.target = ((item.value / maxValue) * 100).toFixed(1);
-    bar.innerHTML = `<span class="bar-label">${item.name}</span>`;
-    container.appendChild(bar);
-  });
-  container.appendChild(avgLine);
+    const avgLine = new THREE.Mesh(
+      new THREE.BoxGeometry(20, 0.12, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x3f51b5, transparent: true, opacity: 0.6 })
+    );
+    avgLine.position.y = (average / max) * 6 + 0.5;
+    scene.add(avgLine);
 
-  function animateBars() {
-    const bars = container.querySelectorAll(".bar");
-    bars.forEach((bar, index) => {
-      bar.style.height = "0%";
-      bar.classList.remove("bar-above", "bar-below", "show-value");
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          bar.style.height = `${bar.dataset.target}%`;
-          const value = Number(bar.dataset.value);
-          const diff = value - average;
-          if (diff >= 0) {
-            bar.classList.add("bar-above");
-          } else {
-            bar.classList.add("bar-below");
-          }
-          setTimeout(() => {
-            bar.classList.add("show-value");
-          }, 500);
-        }, index * 300);
-      });
+    const jumpers = data.map((item, idx) => {
+      const barHeight = (item.value / max) * 6 + 0.4;
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, barHeight, 1.2),
+        new THREE.MeshStandardMaterial({ color: item.color })
+      );
+      bar.position.set(-4.5 + idx * 3, barHeight / 2, 0);
+      scene.add(bar);
+
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.45, 24, 24),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: item.color, emissiveIntensity: 0.2 })
+      );
+      head.position.set(bar.position.x, barHeight + 0.6, 0);
+      scene.add(head);
+
+      const ropeMesh = new THREE.Mesh(
+        new THREE.TorusGeometry(0.9, 0.06, 8, 24),
+        new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.1, roughness: 0.6 })
+      );
+      ropeMesh.position.set(head.position.x, 0.5, 0);
+      ropeMesh.rotation.x = Math.PI / 2;
+      scene.add(ropeMesh);
+
+      return { head, rope: ropeMesh, peak: barHeight + 1.6 };
     });
 
-    if (info) {
-      const aboveNames = data
-        .filter((item) => item.value >= average)
-        .map((item) => item.name)
-        .join("、");
-      const belowNames = data
-        .filter((item) => item.value < average)
-        .map((item) => item.name)
-        .join("、");
-      info.textContent = `平均数为 ${average.toFixed(
-        1
-      )} 次/分钟，高于平均：${aboveNames || "无"}；低于平均：${
-        belowNames || "无"
-      }。`;
+    function playJump() {
+      updaters.length = 0;
+      jumpers.forEach((jumper, idx) => {
+        updaters.push((delta, elapsed) => {
+          const t = elapsed * 2.2 + idx * 0.6;
+          const jump = Math.abs(Math.sin(t)) * 1.2;
+          jumper.head.position.y = jumper.peak + jump;
+          jumper.rope.rotation.z = Math.sin(t) * Math.PI * 0.4;
+        });
+      });
+      if (info) {
+        const above = data.filter((d) => d.value >= average).map((d) => d.name).join("、");
+        const below = data.filter((d) => d.value < average).map((d) => d.name).join("、");
+        info.textContent = `平均 ${average.toFixed(1)} 次/分；高于平均：${above}，低于平均：${below || "无"}`;
+      }
     }
-  }
 
-  animateBars();
-  replayBtn?.addEventListener("click", animateBars);
+    playJump();
+    replayBtn.addEventListener("click", playJump);
+  });
 }
 
 function initFractionPizza() {
-  const canvas = document.getElementById("pizza-canvas");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
+  const replayBtn = getOrCreateButton("replay-pizza", "重新切分披萨", document.querySelector(".viz-card"));
+  createPlaySpace("pizza-canvas", { cameraPos: [0, 7, 14], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 26);
 
-  const pizzas = [
-    {
-      total: 8,
-      eaten: 5,
-      center: { x: 150, y: 125 },
-      radius: 90,
-      label: "切 8 份"
-    },
-    {
-      total: 6,
-      eaten: 3,
-      center: { x: 320, y: 125 },
-      radius: 90,
-      label: "切 6 份"
-    }
-  ];
+    const pizzas = [
+      { total: 8, eaten: 5, center: [-3, 0, 0], color: 0xffb74d },
+      { total: 6, eaten: 3, center: [4, 0, 0], color: 0xff8a65 }
+    ];
 
-  const replayBtn = document.getElementById("replay-pizza");
-  let progress = 0;
-  let animId = null;
+    const slices = [];
 
-  function draw(progressValue) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     pizzas.forEach((pizza) => {
-      const { center, radius, total, eaten, label } = pizza;
-      ctx.save();
-      ctx.translate(center.x, center.y);
-
-      // 背景与剩余部分
-      ctx.beginPath();
-      ctx.fillStyle = "#ffb74d";
-      ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 边缘
-      ctx.strokeStyle = "#d84315";
-      ctx.lineWidth = 6;
-      ctx.stroke();
-
-      // 切片线
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.lineWidth = 3;
-      const startAngle = -Math.PI / 2;
-      const sliceAngle = (Math.PI * 2) / total;
-      for (let i = 0; i < total; i++) {
-        const angle = startAngle + sliceAngle * i;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-        ctx.stroke();
-      }
-
-      // 已吃掉部分
-      const eatenAngle = sliceAngle * eaten * progressValue;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.fillStyle = "rgba(224, 224, 224, 0.92)";
-      ctx.arc(0, 0, radius, startAngle, startAngle + eatenAngle, false);
-      ctx.closePath();
-      ctx.fill();
-
-      // 文本
-      ctx.fillStyle = "#5d4037";
-      ctx.font = "bold 16px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(
-        `${label} · 剩余 ${total - eaten}/${total}`,
-        0,
-        radius + 24
+      const plate = new THREE.Mesh(
+        new THREE.CylinderGeometry(3.6, 3.6, 0.1, 48),
+        new THREE.MeshStandardMaterial({ color: 0xf5f5f5, metalness: 0.1 })
       );
-      ctx.restore();
-    });
-  }
+      plate.position.set(pizza.center[0], 0.05, pizza.center[2]);
+      scene.add(plate);
 
-  function animate() {
-    cancelAnimationFrame(animId);
-    progress = 0;
-
-    const step = () => {
-      progress += 0.015;
-      if (progress > 1) progress = 1;
-      draw(progress);
-      if (progress < 1) {
-        animId = requestAnimationFrame(step);
+      for (let i = 0; i < pizza.total; i++) {
+        const slice = new THREE.Mesh(
+          new THREE.CylinderGeometry(3, 3, 0.6, 24, 1, false, (Math.PI * 2 * i) / pizza.total, (Math.PI * 2) / pizza.total),
+          new THREE.MeshStandardMaterial({ color: pizza.color, emissive: pizza.color, emissiveIntensity: 0.15 })
+        );
+        slice.position.set(pizza.center[0], 0.5, pizza.center[2]);
+        scene.add(slice);
+        slices.push({ mesh: slice, pizza, index: i });
       }
-    };
-    step();
-  }
+    });
 
-  animate();
-  replayBtn?.addEventListener("click", animate);
+    function updateSlices(progress = 1) {
+      slices.forEach((slice) => {
+        const shouldHide = slice.index < slice.pizza.eaten;
+        const height = shouldHide ? Math.max(0.05, 0.6 * (1 - progress)) : 0.6;
+        slice.mesh.scale.y = height / 0.6;
+        slice.mesh.material.opacity = shouldHide ? Math.max(0.2, 1 - progress) : 1;
+        slice.mesh.material.transparent = shouldHide;
+      });
+    }
+
+    let playTime = 0;
+    updaters.push((delta) => {
+      playTime = Math.min(1, playTime + delta * 0.5);
+      updateSlices(playTime);
+    });
+
+    function replay() {
+      playTime = 0;
+      updateSlices(0);
+    }
+
+    replayBtn.addEventListener("click", replay);
+  });
 }
 
 function initRectanglePlayground() {
   const lengthInput = document.getElementById("rect-length");
   const widthInput = document.getElementById("rect-width");
-  if (!lengthInput || !widthInput) return;
-  const rectVisual = document.getElementById("rect-visual");
-  const perimeterText = document.getElementById("rect-perimeter");
-  const areaText = document.getElementById("rect-area");
-  const lengthValue = document.getElementById("rect-length-value");
-  const widthValue = document.getElementById("rect-width-value");
+  createPlaySpace("rect-visual", { cameraPos: [8, 8, 16] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 30);
 
-  const maxDimension = Number(lengthInput.max) || 20;
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.4, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x607d8b })
+    );
+    frame.scale.set(12, 1, 8);
+    frame.position.y = 0.2;
+    scene.add(frame);
 
-  function updateRectangle() {
-    const length = Number(lengthInput.value);
-    const width = Number(widthInput.value);
-    const perimeter = (length + width) * 2;
-    const area = length * width;
+    const fill = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 0.2, 1),
+      new THREE.MeshStandardMaterial({ color: 0x81c784, transparent: true, opacity: 0.8 })
+    );
+    fill.position.y = 0.3;
+    scene.add(fill);
 
-    lengthValue.textContent = length.toString();
-    widthValue.textContent = width.toString();
-
-    const widthPercent = Math.max(15, (length / maxDimension) * 90);
-    const heightPercent = Math.max(15, (width / maxDimension) * 90);
-    rectVisual?.style.setProperty("--rect-width", `${widthPercent}%`);
-    rectVisual?.style.setProperty("--rect-height", `${heightPercent}%`);
-    if (rectVisual) {
-      rectVisual.textContent = `${length}m × ${width}m`;
+    function updateRect() {
+      const length = Number(lengthInput?.value || 12);
+      const width = Number(widthInput?.value || 8);
+      frame.scale.set(length, 1, width);
+      fill.scale.set(length - 0.4, 1, width - 0.4);
+      updateValueText("rect-length-value", length.toString());
+      updateValueText("rect-width-value", width.toString());
+      updateValueText("rect-perimeter", `周长：${(length + width) * 2} 米`);
+      updateValueText("rect-area", `面积：${length * width} 平方米`);
     }
-    perimeterText.textContent = `周长：${perimeter} 米`;
-    areaText.textContent = `面积：${area} 平方米`;
-  }
 
-  lengthInput.addEventListener("input", updateRectangle);
-  widthInput.addEventListener("input", updateRectangle);
-  updateRectangle();
+    updateRect();
+    [lengthInput, widthInput].forEach((input) => input?.addEventListener("input", updateRect));
+    updaters.push(makePulse(fill, 0.05, 1.5));
+  });
 }
 
 function initLeverSimulation() {
-  const canvas = document.getElementById("lever-canvas");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
   const weightInput = document.getElementById("lever-weight");
-  const positionInput = document.getElementById("lever-position");
-  const weightValue = document.getElementById("lever-weight-value");
-  const positionValue = document.getElementById("lever-position-value");
-  const leftTorqueText = document.getElementById("left-torque");
-  const rightTorqueText = document.getElementById("right-torque");
-  const statusText = document.getElementById("lever-status");
+  const posInput = document.getElementById("lever-position");
+  const status = document.getElementById("lever-status");
+  createPlaySpace("lever-canvas", { cameraPos: [0, 6, 14], hostSelector: ".lever-canvas-wrapper" }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 26);
 
-  const scale = 8; // 每厘米的像素值
-  const beamLengthCm = 50;
-  const beamLengthPx = beamLengthCm * scale;
-  const offsetX = 60;
-  const pivotCm = 20;
-  const pivotX = offsetX + pivotCm * scale;
-  const pivotY = 130;
-  const beamThickness = 16;
-  const leftMassCount = 2;
-  const leftPositionCm = 5;
-  const leftArm = pivotCm - leftPositionCm; // 15 cm
-  const baseForce = 50; // 50 g
+    const fulcrum = new THREE.Mesh(
+      new THREE.ConeGeometry(1.1, 1.6, 4),
+      new THREE.MeshStandardMaterial({ color: 0x8d6e63 })
+    );
+    fulcrum.position.y = 0.8;
+    scene.add(fulcrum);
 
-  function drawLever(angle, rightPosition, rightMass) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // 地面
-    ctx.fillStyle = "#d7ccc8";
-    ctx.fillRect(0, pivotY + 40, canvas.width, 30);
+    const plank = new THREE.Mesh(
+      new THREE.BoxGeometry(12, 0.4, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0x90caf9, metalness: 0.1, roughness: 0.6 })
+    );
+    plank.position.y = 1.2;
+    scene.add(plank);
 
-    // 支点
-    ctx.fillStyle = "#8d6e63";
-    ctx.beginPath();
-    ctx.moveTo(pivotX - 25, pivotY + 40);
-    ctx.lineTo(pivotX + 25, pivotY + 40);
-    ctx.lineTo(pivotX, pivotY - 10);
-    ctx.closePath();
-    ctx.fill();
+    const left = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0xffb74d })
+    );
+    left.position.set(-4, 1.8, 0);
+    scene.add(left);
 
-    ctx.save();
-    ctx.translate(pivotX, pivotY - 10);
-    ctx.rotate(angle);
+    const right = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x4db6ac })
+    );
+    scene.add(right);
 
-    // 杠杆
-    ctx.fillStyle = "#ffe082";
-    ctx.fillRect(-pivotCm * scale, -beamThickness / 2, beamLengthPx, beamThickness);
-    ctx.strokeStyle = "#ffb300";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-pivotCm * scale, -beamThickness / 2, beamLengthPx, beamThickness);
-
-    // 刻度
-    ctx.strokeStyle = "rgba(0,0,0,0.2)";
-    for (let cm = 0; cm <= beamLengthCm; cm += 5) {
-      const x = (cm - pivotCm) * scale;
-      ctx.beginPath();
-      ctx.moveTo(x, -beamThickness / 2);
-      ctx.lineTo(x, beamThickness / 2);
-      ctx.stroke();
+    function updateLever() {
+      const weight = Number(weightInput?.value || 2);
+      const position = Number(posInput?.value || 40);
+      const leftTorque = 4 * 40;
+      const rightTorque = weight * position;
+      const tilt = (rightTorque - leftTorque) / 400;
+      plank.rotation.z = tilt * 0.4;
+      right.position.set((position - 40) / 5, 1.8 + tilt * 0.8, 0);
+      left.position.y = 1.8 - tilt * 0.8;
+      updateValueText("lever-weight-value", weight.toString());
+      updateValueText("lever-position-value", position.toString());
+      if (status) {
+        status.textContent = Math.abs(rightTorque - leftTorque) < 5 ? "状态：接近平衡" : rightTorque > leftTorque ? "状态：右侧更重" : "状态：左侧更重";
+      }
     }
 
-    // 左侧砝码
-    drawWeight(ctx, (leftPositionCm - pivotCm) * scale, -35, leftMassCount, "#4dd0e1");
-    // 右侧砝码
-    drawWeight(
-      ctx,
-      (rightPosition - pivotCm) * scale,
-      -35,
-      rightMass,
-      "#ff8a65"
-    );
-
-    ctx.restore();
-  }
-
-function drawWeight(ctx, offsetX, offsetY, massCount, color) {
-  if (massCount <= 0) return;
-  ctx.save();
-  ctx.translate(offsetX, offsetY);
-
-    const width = 24;
-    const height = 22;
-    const spacing = 6;
-    for (let i = 0; i < Math.ceil(massCount); i++) {
-      const isHalf = massCount - i === 0.5;
-      const actualHeight = isHalf ? height / 2 : height;
-      ctx.fillStyle = color;
-      ctx.strokeStyle = "#5d4037";
-      ctx.lineWidth = 1.5;
-    drawRoundedRect(
-      ctx,
-      -width / 2,
-      i * (height + spacing),
-      width,
-      actualHeight,
-      4
-    );
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawRoundedRect(ctx, x, y, width, height, radius) {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-  function updateLever() {
-    const rightMass = Number(weightInput.value);
-    const rightPosition = Number(positionInput.value);
-    weightValue.textContent = rightMass.toString();
-    positionValue.textContent = rightPosition.toString();
-
-    const leftTorque = leftMassCount * baseForce * leftArm;
-    const rightArm = rightPosition - pivotCm;
-    const rightTorque = rightMass * baseForce * rightArm;
-
-    const torqueDiff = rightTorque - leftTorque;
-    const angle = Math.max(-0.35, Math.min(0.35, torqueDiff / 6000));
-
-    leftTorqueText.textContent = `左侧力矩：${leftTorque.toFixed(0)} g·cm`;
-    rightTorqueText.textContent = `右侧力矩：${rightTorque.toFixed(0)} g·cm`;
-    const status =
-      Math.abs(torqueDiff) < 30
-        ? "状态：平衡 ✅"
-        : torqueDiff > 0
-        ? "状态：右侧较重 ↘"
-        : "状态：左侧较重 ↗";
-    statusText.textContent = status;
-
-    drawLever(angle, rightPosition, rightMass);
-  }
-
-  weightInput.addEventListener("input", updateLever);
-  positionInput.addEventListener("input", updateLever);
-  updateLever();
+    updateLever();
+    [weightInput, posInput].forEach((el) => el?.addEventListener("input", updateLever));
+    updaters.push(gentleBob(left, left.position.y));
+    updaters.push(gentleBob(right, right.position.y));
+  });
 }
 
 function initWaterCycle() {
-  const canvas = document.getElementById("water-canvas");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
-  const slider = document.getElementById("sun-intensity");
-  const sliderValue = document.getElementById("sun-intensity-value");
-
-  let sunIntensity = Number(slider?.value || 3);
-  let vapors = [];
-  let raindrops = [];
-  let cloudMoisture = 0;
-  let lastTime = 0;
-
-  function addVapor() {
-    const waterY = canvas.height - 60;
-    vapors.push({
-      x: Math.random() * canvas.width,
-      y: waterY,
-      speed: 0.05 + Math.random() * 0.05 * sunIntensity
-    });
+  const sliderId = "water-energy";
+  let energyControl = document.getElementById(sliderId);
+  if (!energyControl) {
+    const bar = document.createElement("div");
+    bar.className = "control-row";
+    bar.innerHTML = `<label>阳光强度</label><input id="${sliderId}" type="range" min="0.2" max="2" step="0.1" value="1">`;
+    (document.querySelector(".water-scene") || document.querySelector(".viz-card") || document.querySelector(".main-content"))?.appendChild(bar);
+    energyControl = bar.querySelector("input");
   }
 
-  function addRaindrop() {
-    const cloudY = 80;
-    raindrops.push({
-      x: canvas.width * 0.25 + Math.random() * canvas.width * 0.5,
-      y: cloudY,
-      speed: 0.18 + Math.random() * 0.04
-    });
-  }
+  createPlaySpace("water-canvas", { cameraPos: [0, 8, 15], background: 0xe3f2fd }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xbbdefb, 26);
 
-  function update(dt) {
-    // 蒸发
-    const vaporRate = sunIntensity * 0.04;
-    for (let i = 0; i < vaporRate; i++) {
-      addVapor();
-    }
-    vapors = vapors.filter((vapor) => {
-      vapor.y -= vapor.speed * dt;
-      if (vapor.y <= 95) {
-        cloudMoisture += vapor.speed * dt * 2;
-        return false;
-      }
-      return vapor.y > 0;
-    });
+    const ocean = new THREE.Mesh(
+      new THREE.CylinderGeometry(4, 4, 1, 48),
+      new THREE.MeshStandardMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.7 })
+    );
+    ocean.position.set(-4, 0.5, -1);
+    scene.add(ocean);
 
-    // 云层达到饱和触发降水
-    if (cloudMoisture > 30) {
-      addRaindrop();
-      cloudMoisture -= 10;
+    const cloud = new THREE.Mesh(
+      new THREE.SphereGeometry(1.8, 18, 18),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 })
+    );
+    cloud.position.set(3.5, 3.4, 0);
+    scene.add(cloud);
+
+    const droplets = [];
+    for (let i = 0; i < 70; i++) {
+      const drop = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 12, 12),
+        new THREE.MeshStandardMaterial({ color: 0x29b6f6, emissive: 0x29b6f6, emissiveIntensity: 0.3 })
+      );
+      drop.position.set(-4 + Math.random() * 2 - 1, 0.2 + Math.random(), -1 + Math.random() * 2 - 1);
+      scene.add(drop);
+      droplets.push(drop);
     }
 
-    raindrops = raindrops.filter((drop) => {
-      drop.y += drop.speed * dt;
-      return drop.y < canvas.height - 30;
+    const rains = [];
+    for (let i = 0; i < 50; i++) {
+      const rain = new THREE.Mesh(
+        new THREE.ConeGeometry(0.05, 0.4, 6),
+        new THREE.MeshStandardMaterial({ color: 0x0277bd })
+      );
+      rain.position.set(3.5 + Math.random() * 1.5 - 0.75, 3 + Math.random() * 1, Math.random() * 2 - 1);
+      scene.add(rain);
+      rains.push(rain);
+    }
+
+    updaters.push((delta, elapsed) => {
+      const energy = Number(energyControl?.value || 1);
+      droplets.forEach((drop, idx) => {
+        drop.position.y += delta * energy * 0.8;
+        if (drop.position.y > 2.6) drop.position.y = 0.1;
+        drop.position.x += Math.sin(elapsed * 0.5 + idx) * 0.002;
+      });
+      rains.forEach((rain) => {
+        rain.position.y -= delta * (1 + energy * 0.8);
+        if (rain.position.y < 0) rain.position.y = 3.2;
+      });
+      cloud.scale.setScalar(1 + Math.min(0.6, energy * 0.3));
     });
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const waterY = canvas.height - 60;
-
-    // 天空背景
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGrad.addColorStop(0, "#bbdefb");
-    skyGrad.addColorStop(0.5, "#e3f2fd");
-    skyGrad.addColorStop(1, "#b2dfdb");
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 太阳
-    ctx.beginPath();
-    ctx.fillStyle = "#ffd54f";
-    ctx.arc(canvas.width - 60, 60, 35 + sunIntensity * 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 水面
-    const waterGrad = ctx.createLinearGradient(0, waterY, 0, canvas.height);
-    waterGrad.addColorStop(0, "#29b6f6");
-    waterGrad.addColorStop(1, "#0288d1");
-    ctx.fillStyle = waterGrad;
-    ctx.fillRect(0, waterY, canvas.width, canvas.height - waterY);
-
-    // 云
-    const cloudOpacity = Math.min(0.2 + cloudMoisture / 120, 0.8);
-    ctx.fillStyle = `rgba(255,255,255,${cloudOpacity})`;
-    ctx.beginPath();
-    ctx.ellipse(canvas.width / 3, 90, 90, 30, 0, 0, Math.PI * 2);
-    ctx.ellipse(canvas.width / 2, 70, 110, 35, 0, 0, Math.PI * 2);
-    ctx.ellipse((canvas.width / 3) * 2, 95, 80, 25, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 水汽
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    vapors.forEach((vapor) => {
-      ctx.beginPath();
-      ctx.arc(vapor.x, vapor.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // 降雨
-    ctx.strokeStyle = "rgba(33,150,243,0.9)";
-    ctx.lineWidth = 2;
-    raindrops.forEach((drop) => {
-      ctx.beginPath();
-      ctx.moveTo(drop.x, drop.y);
-      ctx.lineTo(drop.x, drop.y + 10);
-      ctx.stroke();
-    });
-
-    // 文本提示
-    ctx.fillStyle = "#01579b";
-    ctx.font = "14px Sans-Serif";
-    ctx.fillText("蒸发", 40, waterY - 30);
-    ctx.fillText("凝结形成云层", canvas.width / 2 - 60, 60);
-    ctx.fillText("降水", canvas.width / 2, 160);
-  }
-
-  function loop(timestamp) {
-    const dt = timestamp - lastTime || 16;
-    lastTime = timestamp;
-    update(dt);
-    draw();
-    requestAnimationFrame(loop);
-  }
-
-  slider?.addEventListener("input", (event) => {
-    sunIntensity = Number(event.target.value);
-    sliderValue.textContent = sunIntensity.toString();
   });
-
-  sliderValue.textContent = sunIntensity.toString();
-  requestAnimationFrame(loop);
 }
 
+
 function initPythagorasDemo() {
-  const canvas = document.getElementById("pythagoras-canvas");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
-  const baseSlider = document.getElementById("tri-base");
-  const heightSlider = document.getElementById("tri-height");
-  const baseValue = document.getElementById("tri-base-value");
-  const heightValue = document.getElementById("tri-height-value");
-  const formulaText = document.getElementById("tri-formula");
+  createPlaySpace("pythagoras-board", { cameraPos: [0, 9, 18] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 28);
 
-  function drawTriangle() {
-    const base = Number(baseSlider.value);
-    const height = Number(heightSlider.value);
-    const hypotenuse = Math.sqrt(base * base + height * height);
-    const padding = 45;
-    const basePx = base;
-    const heightPx = height;
-    const scale = Math.min(
-      (canvas.width - padding * 2) / basePx,
-      (canvas.height - padding * 2) / heightPx
+    const tri = new THREE.Mesh(
+      new THREE.ConeGeometry(6, 0.4, 3),
+      new THREE.MeshStandardMaterial({ color: 0x90a4ae, transparent: true, opacity: 0.8 })
     );
-    const scaledBase = basePx * scale;
-    const scaledHeight = heightPx * scale;
-    const originX = padding;
-    const originY = canvas.height - padding;
+    tri.rotation.x = -Math.PI / 2;
+    tri.position.y = 0.2;
+    scene.add(tri);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bg.addColorStop(0, "#e3f2fd");
-    bg.addColorStop(1, "#fffde7");
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const squares = [
+      { color: 0xff8a65, size: 6, pos: [-4.5, 0.21, -4.5] },
+      { color: 0x4fc3f7, size: 8, pos: [4.5, 0.21, -4.5] },
+      { color: 0x81c784, size: 10, pos: [0, 0.21, 5] }
+    ];
 
-    // Squares on legs
-    ctx.fillStyle = "rgba(25, 118, 210, 0.15)";
-    ctx.strokeStyle = "#1e88e5";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.rect(originX, originY, scaledBase, -scaledBase);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(67, 160, 71, 0.18)";
-    ctx.strokeStyle = "#43a047";
-    ctx.beginPath();
-    ctx.rect(originX, originY, -scaledHeight, -scaledHeight);
-    ctx.fill();
-    ctx.stroke();
-
-    // Triangle
-    ctx.beginPath();
-    ctx.moveTo(originX, originY);
-    ctx.lineTo(originX + scaledBase, originY);
-    ctx.lineTo(originX, originY - scaledHeight);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(255, 183, 77, 0.65)";
-    ctx.fill();
-    ctx.strokeStyle = "#fb8c00";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Right angle marker
-    ctx.strokeStyle = "#fb8c00";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(originX + 18, originY);
-    ctx.lineTo(originX + 18, originY - 18);
-    ctx.lineTo(originX, originY - 18);
-    ctx.stroke();
-
-    // Labels
-    ctx.fillStyle = "#0d47a1";
-    ctx.font = "14px Sans-Serif";
-    ctx.fillText(
-      `a = ${base.toFixed(1)} m`,
-      originX + scaledBase / 2 - 30,
-      originY + 22
-    );
-    ctx.save();
-    ctx.translate(originX - 30, originY - scaledHeight / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText(`b = ${height.toFixed(1)} m`, -20, 0);
-    ctx.restore();
-
-    ctx.fillStyle = "#bf360c";
-    ctx.font = "16px Sans-Serif";
-    const midX = originX + scaledBase / 2 - 30;
-    const midY = originY - scaledHeight / 2 - 8;
-    ctx.fillText(`c ≈ ${hypotenuse.toFixed(2)} m`, midX, midY);
-
-    if (baseValue) baseValue.textContent = base.toString();
-    if (heightValue) heightValue.textContent = height.toString();
-    if (formulaText) {
-      formulaText.textContent = `${base.toFixed(1)}² + ${height.toFixed(
-        1
-      )}² = ${hypotenuse.toFixed(2)}²`;
-    }
-  }
-
-  baseSlider?.addEventListener("input", drawTriangle);
-  heightSlider?.addEventListener("input", drawTriangle);
-  drawTriangle();
+    squares.forEach((s) => {
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(s.size, 0.3, s.size),
+        new THREE.MeshStandardMaterial({ color: s.color, transparent: true, opacity: 0.75 })
+      );
+      mesh.position.set(s.pos[0], s.pos[1], s.pos[2]);
+      scene.add(mesh);
+      updaters.push(makePulse(mesh, 0.04, 1.8));
+    });
+  });
 }
 
 function initMultiplicationArrays() {
   const rowsInput = document.getElementById("array-rows");
   const colsInput = document.getElementById("array-cols");
+  const swapBtn = document.getElementById("array-swap") || getOrCreateButton("array-swap", "行列互换", document.querySelector(".viz-card"));
+  const totalEl = document.getElementById("array-total");
   const rowsValue = document.getElementById("array-rows-value");
   const colsValue = document.getElementById("array-cols-value");
-  const totalText = document.getElementById("array-total");
-  const grid = document.getElementById("array-grid");
-  const swapBtn = document.getElementById("array-swap");
-  if (!rowsInput || !colsInput || !grid) return;
 
-  function renderGrid(rows, cols) {
-    grid.innerHTML = "";
-    grid.style.setProperty("--cols", cols);
-    const total = rows * cols;
-    for (let i = 0; i < total; i++) {
-      const cell = document.createElement("div");
-      cell.className = "array-cell fade-in";
-      grid.appendChild(cell);
+  createPlaySpace("array-grid", { cameraPos: [6, 10, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 24);
+
+    let group = new THREE.Group();
+    scene.add(group);
+
+    function rebuild(rows, cols) {
+      scene.remove(group);
+      group.children.forEach((c) => c.geometry?.dispose?.());
+      group = new THREE.Group();
+      scene.add(group);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.35, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0xffc107, emissive: 0xffb300, emissiveIntensity: 0.35 })
+          );
+          mesh.position.set((c - cols / 2) * 1.3, 0.35, (r - rows / 2) * 1.3);
+          mesh.userData.base = mesh.position.clone();
+          group.add(mesh);
+        }
+      }
+
+      if (rowsValue) rowsValue.textContent = rows;
+      if (colsValue) colsValue.textContent = cols;
+      if (totalEl) totalEl.textContent = rows * cols;
     }
-    rowsValue.textContent = rows.toString();
-    colsValue.textContent = cols.toString();
-    if (totalText) {
-      totalText.textContent = total.toString();
+
+    function readAndApply() {
+      const rows = Number(rowsInput?.value || 4);
+      const cols = Number(colsInput?.value || 5);
+      rebuild(rows, cols);
     }
-  }
 
-  function handleChange() {
-    const rows = Number(rowsInput.value);
-    const cols = Number(colsInput.value);
-    renderGrid(rows, cols);
-  }
+    updaters.push((delta, elapsed) => {
+      group.children.forEach((fruit, idx) => {
+        const pulse = 1 + Math.sin(elapsed * 2 + idx) * 0.05;
+        fruit.scale.setScalar(pulse);
+        fruit.position.y = 0.35 + Math.abs(Math.sin(elapsed * 1.5 + idx)) * 0.2;
+      });
+    });
 
-  swapBtn?.addEventListener("click", () => {
-    const temp = rowsInput.value;
-    rowsInput.value = colsInput.value;
-    colsInput.value = temp;
-    handleChange();
+    readAndApply();
+    rowsInput?.addEventListener("input", readAndApply);
+    colsInput?.addEventListener("input", readAndApply);
+    swapBtn?.addEventListener("click", () => {
+      if (rowsInput && colsInput) {
+        const r = rowsInput.value;
+        rowsInput.value = colsInput.value;
+        colsInput.value = r;
+      }
+      readAndApply();
+    });
   });
-
-  rowsInput.addEventListener("input", handleChange);
-  colsInput.addEventListener("input", handleChange);
-  handleChange();
 }
 
 function initFractionAddition() {
-  const canvas = document.getElementById("fraction-canvas");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
-  const replayBtn = document.getElementById("fraction-replay");
+  const playBtn = getOrCreateButton("fraction-merge", "通分并合并", document.querySelector(".viz-card"));
+  createPlaySpace("fraction-bars", { cameraPos: [0, 7, 14], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 22);
 
-  const fractionTargets = {
-    first: 5 / 8,
-    second: 1 / 4,
-    combined: 7 / 8
-  };
+    const barA = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 0.4, 1.2),
+      new THREE.MeshStandardMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.85 })
+    );
+    barA.position.set(0, 0.5, -1.4);
+    scene.add(barA);
 
-  let progress = 0;
-  let requestId;
+    const barB = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 0.4, 1.2),
+      new THREE.MeshStandardMaterial({ color: 0xffb74d, transparent: true, opacity: 0.85 })
+    );
+    barB.position.set(0, 0.5, 1.4);
+    scene.add(barB);
 
-  function drawFractionBar(x, y, width, height, segments, filledRatio, label) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = "#ffe0b2";
-    ctx.fillRect(0, 0, width, height);
-    ctx.strokeStyle = "#ffb74d";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, width, height);
+    const result = new THREE.Mesh(
+      new THREE.BoxGeometry(12, 0.6, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0x81c784, transparent: true, opacity: 0.3 })
+    );
+    result.position.set(0, 0.6, 0);
+    scene.add(result);
 
-    const segWidth = width / segments;
-    for (let i = 1; i < segments; i++) {
-      ctx.beginPath();
-      ctx.moveTo(segWidth * i, 0);
-      ctx.lineTo(segWidth * i, height);
-      ctx.strokeStyle = "rgba(255,255,255,0.6)";
-      ctx.stroke();
+    function merge() {
+      result.material.opacity = 0.3;
+      updaters.push((delta) => {
+        result.material.opacity = Math.min(0.95, result.material.opacity + delta);
+      });
+      barA.position.x = -1.5;
+      barB.position.x = 1.5;
+      updaters.push((delta) => {
+        barA.position.x = Math.min(0, barA.position.x + delta * 2);
+        barB.position.x = Math.max(0, barB.position.x - delta * 2);
+      });
     }
 
-    ctx.fillStyle = "#f06292";
-    ctx.fillRect(0, 0, width * filledRatio, height);
-
-    ctx.fillStyle = "#5d4037";
-    ctx.font = "bold 14px Sans-Serif";
-    ctx.fillText(label, width / 2 - ctx.measureText(label).width / 2, height + 18);
-    ctx.restore();
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const firstPhase = Math.min(progress / 0.35, 1);
-    const secondPhase = Math.min(Math.max((progress - 0.35) / 0.35, 0), 1);
-    const combinedPhase = Math.min(Math.max((progress - 0.7) / 0.3, 0), 1);
-
-    drawFractionBar(30, 20, 160, 40, 8, fractionTargets.first * firstPhase, "第一块 5/8");
-    drawFractionBar(230, 20, 160, 40, 4, fractionTargets.second * secondPhase, "第二块 1/4");
-
-    ctx.save();
-    ctx.translate(30, 120);
-    ctx.fillStyle = "#fffde7";
-    ctx.fillRect(0, 0, 360, 50);
-    ctx.strokeStyle = "#ffecb3";
-    ctx.strokeRect(0, 0, 360, 50);
-    for (let i = 1; i < 8; i++) {
-      ctx.beginPath();
-      ctx.moveTo((360 / 8) * i, 0);
-      ctx.lineTo((360 / 8) * i, 50);
-      ctx.strokeStyle = "rgba(0,0,0,0.08)";
-      ctx.stroke();
-    }
-    ctx.fillStyle = "#ff8a65";
-    ctx.fillRect(0, 0, 360 * fractionTargets.combined * combinedPhase, 50);
-    ctx.fillStyle = "#5d4037";
-    ctx.font = "bold 16px Sans-Serif";
-    const text = `合计：7/8`;
-    ctx.fillText(text, 180 - ctx.measureText(text).width / 2, 75);
-    ctx.restore();
-  }
-
-  function step() {
-    progress += 0.01;
-    if (progress > 1) progress = 1;
-    draw();
-    if (progress < 1) {
-      requestId = requestAnimationFrame(step);
-    }
-  }
-
-  function startAnimation() {
-    cancelAnimationFrame(requestId);
-    progress = 0;
-    step();
-  }
-
-  replayBtn?.addEventListener("click", startAnimation);
-  startAnimation();
+    merge();
+    playBtn.addEventListener("click", merge);
+  });
 }
 
 function initTimeConversion() {
-  const slider = document.getElementById("days-slider");
+  const daysSlider = document.getElementById("days-slider");
   const daysValue = document.getElementById("days-value");
   const minutesTotal = document.getElementById("minutes-total");
   const hoursTotal = document.getElementById("hours-total");
   const daysTotal = document.getElementById("days-total");
-  const timeBars = document.getElementById("time-bars");
-  if (!slider || !timeBars) return;
 
-  const sessions = [
-    { name: "morning", minutes: 90 },
-    { name: "afternoon", minutes: 45 },
-    { name: "night", minutes: 12 }
-  ];
-  const dailyTotal = sessions.reduce((sum, s) => sum + s.minutes, 0);
+  createPlaySpace("time-scene", { cameraPos: [0, 7, 12], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 22);
 
-  function formatHours(mins) {
-    const hours = Math.floor(mins / 60);
-    const minutes = mins % 60;
-    return `${hours} 小时 ${minutes} 分`;
-  }
+    const plate = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.5, 3.5, 0.3, 48),
+      new THREE.MeshStandardMaterial({ color: 0xe0f2f1 })
+    );
+    plate.position.y = 0.15;
+    scene.add(plate);
 
-  function update() {
-    const days = Number(slider.value);
-    daysValue.textContent = days.toString();
+    const hourHand = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 2.2, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x00796b })
+    );
+    hourHand.position.y = 1.2;
+    scene.add(hourHand);
 
-    Array.from(timeBars.children).forEach((bar, index) => {
-      const session = sessions[index];
-      const percent = (session.minutes / dailyTotal) * 100;
-      bar.style.flexBasis = `${percent}%`;
-      bar.style.width = `${percent}%`;
-    });
+    const minuteHand = new THREE.Mesh(
+      new THREE.BoxGeometry(0.14, 3.2, 0.14),
+      new THREE.MeshStandardMaterial({ color: 0xff7043 })
+    );
+    minuteHand.position.y = 1.6;
+    scene.add(minuteHand);
 
-    minutesTotal.textContent = `每日 ${dailyTotal} 分钟`;
-    hoursTotal.textContent = `≈ ${formatHours(dailyTotal)}`;
-    const totalMinutes = dailyTotal * days;
-    daysTotal.textContent = `${days} 天合计 ≈ ${formatHours(totalMinutes)}`;
-  }
+    function updateTotals() {
+      const days = Number(daysSlider?.value || 7);
+      const daily = 147;
+      const totalMinutes = daily * days;
+      if (daysValue) daysValue.textContent = days;
+      if (minutesTotal) minutesTotal.textContent = `每日 ${daily} 分钟`;
+      if (hoursTotal) hoursTotal.textContent = `≈ ${(daily / 60).toFixed(2)} 小时`;
+      if (daysTotal) daysTotal.textContent = `${days} 天合计 ≈ ${(totalMinutes / 60).toFixed(1)} 小时`;
 
-  slider.addEventListener("input", update);
-  update();
+      const hours = Math.floor((daily % 720) / 60);
+      const mins = daily % 60;
+      hourHand.rotation.y = (Math.PI * 2 * (hours + mins / 60)) / 12;
+      minuteHand.rotation.y = (Math.PI * 2 * mins) / 60;
+      updateValueText("time-digital", `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`);
+    }
+
+    daysSlider?.addEventListener("input", updateTotals);
+    updaters.push(spin(plate, 0.2));
+    updateTotals();
+  });
 }
 
 function initMagnetExperiment() {
-  const canvas = document.getElementById("magnet-canvas");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
-  const modeSelect = document.getElementById("magnet-mode");
-  const barrierSlider = document.getElementById("magnet-barrier");
+  const btn = getOrCreateButton("magnet-pulse", "吸附实验", document.querySelector(".viz-card"));
+  const mode = document.getElementById("magnet-mode");
+  const barrier = document.getElementById("magnet-barrier");
   const barrierValue = document.getElementById("magnet-barrier-value");
+  createPlaySpace("magnet-canvas", { cameraPos: [0, 8, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 24);
 
-  let mode = modeSelect?.value || "opposite";
-  let barrier = Number(barrierSlider?.value || 2);
-
-  function drawMagnet(x, y, width, height, colors, labels) {
-    ctx.save();
-    ctx.translate(x, y);
-    const half = width / 2;
-    ctx.fillStyle = colors[0];
-    ctx.fillRect(-half, -height / 2, half, height);
-    ctx.fillStyle = colors[1];
-    ctx.fillRect(0, -height / 2, half, height);
-    ctx.strokeStyle = "#263238";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-half, -height / 2, width, height);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 18px Sans-Serif";
-    ctx.fillText(labels[0], -half + 12, 6);
-    ctx.fillText(labels[1], half - 26, 6);
-    ctx.restore();
-  }
-
-  function drawFieldLines(opposite, spacing) {
-    ctx.strokeStyle = opposite ? "rgba(33,150,243,0.8)" : "rgba(244,81,30,0.7)";
-    ctx.lineWidth = 2;
-    const baseY = canvas.height / 2;
-    const leftX = canvas.width / 2 - spacing / 2;
-    const rightX = canvas.width / 2 + spacing / 2;
-
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath();
-      const offsetY = i * 20;
-      if (opposite) {
-        ctx.moveTo(leftX, baseY + offsetY);
-        ctx.bezierCurveTo(
-          leftX + spacing * 0.25,
-          baseY - 60,
-          rightX - spacing * 0.25,
-          baseY - 60,
-          rightX,
-          baseY + offsetY
-        );
-      } else {
-        ctx.moveTo(leftX, baseY + offsetY);
-        ctx.bezierCurveTo(
-          leftX - spacing * 0.4,
-          baseY + offsetY - 80,
-          leftX - spacing * 0.4,
-          baseY + offsetY + 80,
-          leftX,
-          baseY + offsetY
-        );
-      }
-      ctx.stroke();
-    }
-
-    if (!opposite) {
-      ctx.strokeStyle = "rgba(33,150,243,0.35)";
-      for (let i = -2; i <= 2; i++) {
-        ctx.beginPath();
-        const offsetY = i * 20;
-        ctx.moveTo(rightX, baseY + offsetY);
-        ctx.bezierCurveTo(
-          rightX + spacing * 0.4,
-          baseY + offsetY - 80,
-          rightX + spacing * 0.4,
-          baseY + offsetY + 80,
-          rightX,
-          baseY + offsetY
-        );
-        ctx.stroke();
-      }
-    }
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const magnetWidth = 100;
-    const magnetHeight = 60;
-    const spacing = 120 + barrier * 3;
-    const centerY = canvas.height / 2;
-
-    drawFieldLines(mode === "opposite", spacing);
-
-    drawMagnet(
-      canvas.width / 2 - spacing / 2,
-      centerY,
-      magnetWidth,
-      magnetHeight,
-      ["#e53935", "#1e88e5"],
-      mode === "opposite" ? ["N", "S"] : ["N", "N"]
+    const magnet = new THREE.Mesh(
+      new THREE.TorusGeometry(1.2, 0.4, 12, 24),
+      new THREE.MeshStandardMaterial({ color: 0xc62828, metalness: 0.4, roughness: 0.4 })
     );
-    drawMagnet(
-      canvas.width / 2 + spacing / 2,
-      centerY,
-      magnetWidth,
-      magnetHeight,
-      ["#1e88e5", "#e53935"],
-      mode === "opposite" ? ["S", "N"] : ["N", "N"]
-    );
+    magnet.position.set(-2.4, 1, 0);
+    scene.add(magnet);
 
-    // 隔层
-    ctx.fillStyle = `rgba(158, 158, 158, ${Math.min(barrier / 12, 0.85)})`;
-    const barrierWidth = Math.max(6, barrier * 2);
-    ctx.fillRect(canvas.width / 2 - barrierWidth / 2, centerY - 70, barrierWidth, 140);
-
-    ctx.fillStyle = "#37474f";
-    ctx.font = "14px Sans-Serif";
-    const label =
-      mode === "opposite" ? "异极：磁力线连接两极" : "同极：磁力线向外扩散并相互排斥";
-    ctx.fillText(label, canvas.width / 2 - ctx.measureText(label).width / 2, 25);
-  }
-
-  function update() {
-    mode = modeSelect?.value || mode;
-    barrier = Number(barrierSlider?.value || barrier);
-    if (barrierValue) {
-      barrierValue.textContent = barrier.toString();
+    const nails = [];
+    for (let i = 0; i < 12; i++) {
+      const nail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.18, 1, 8),
+        new THREE.MeshStandardMaterial({ color: 0x90a4ae })
+      );
+      nail.position.set(2 + Math.random() * 3, 0.5, Math.random() * 2 - 1);
+      scene.add(nail);
+      nails.push(nail);
     }
-    draw();
-  }
 
-  modeSelect?.addEventListener("change", update);
-  barrierSlider?.addEventListener("input", update);
-  update();
+    const field = spreadRing(ctx, 3.6, 24, 0x29b6f6);
+
+    function pulse() {
+      const barrierScale = 1 - Math.min(1, Number(barrier?.value || 0) / 12);
+      if (barrierValue) barrierValue.textContent = barrier?.value || "0";
+      updaters.push((delta, elapsed) => {
+        field.children.forEach((sphere, idx) => {
+          sphere.position.y = 0.25 + Math.sin(elapsed * 2 + idx) * 0.2 * barrierScale;
+        });
+        nails.forEach((nail) => {
+          const attract = mode?.value === "same" ? -1 : 1;
+          const force = attract * barrierScale * 0.8;
+          nail.position.x += (-1.6 - nail.position.x) * delta * force;
+          nail.position.y = 0.5 + (1.8 - nail.position.x) * 0.05 * attract;
+        });
+      });
+    }
+
+    pulse();
+    btn.addEventListener("click", pulse);
+    barrier?.addEventListener("input", pulse);
+    mode?.addEventListener("change", pulse);
+  });
 }
 
 function initPlantTranspiration() {
-  const canvas = document.getElementById("plant-canvas");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
-  const lightSlider = document.getElementById("plant-light");
-  const humiditySlider = document.getElementById("plant-humidity");
-  const lightValue = document.getElementById("plant-light-value");
-  const humidityValue = document.getElementById("plant-humidity-value");
-
-  let light = Number(lightSlider?.value || 3);
-  let humidity = Number(humiditySlider?.value || 50);
-
-  let particles = [];
-  let bagDrops = 0;
-  let lastTime = 0;
-
-  function spawnParticle() {
-    const baseX = canvas.width / 2;
-    const leafY = canvas.height - 80;
-    particles.push({
-      x: baseX + (Math.random() - 0.5) * 80,
-      y: leafY + Math.random() * 10,
-      speed: 0.04 + Math.random() * 0.03,
-      drift: (Math.random() - 0.5) * 0.04
-    });
+  const sliderId = "transpiration-speed";
+  let slider = document.getElementById(sliderId);
+  if (!slider) {
+    const wrap = document.createElement("div");
+    wrap.className = "control-row";
+    wrap.innerHTML = `<label>阳光</label><input id="${sliderId}" type="range" min="0.5" max="2" step="0.1" value="1">`;
+    (document.querySelector(".viz-card") || document.querySelector(".main-content"))?.appendChild(wrap);
+    slider = wrap.querySelector("input");
   }
 
-  function update(dt) {
-    const dryness = Math.max(0.2, 1 - humidity / 120);
-    const rate = light * dryness * 0.6;
-    for (let i = 0; i < rate; i++) {
-      spawnParticle();
-    }
+  createPlaySpace("transpiration-canvas", { cameraPos: [0, 9, 14], background: 0xe8f5e9 }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xc8e6c9, 24);
 
-    particles = particles.filter((p) => {
-      p.y -= p.speed * dt * 15;
-      p.x += Math.sin(p.y / 25) * p.drift * dt * 15;
-      if (p.y < 80) {
-        bagDrops = Math.min(100, bagDrops + 0.05 * light);
-        return false;
-      }
-      return p.y > 0;
-    });
-
-    bagDrops *= 0.995; // 缓慢回落，模拟滴落
-  }
-
-  function drawPlant() {
-    const stemX = canvas.width / 2;
-    const baseY = canvas.height - 20;
-    ctx.fillStyle = "#8bc34a";
-    ctx.beginPath();
-    ctx.moveTo(stemX - 8, baseY);
-    ctx.quadraticCurveTo(stemX - 12, baseY - 80, stemX - 4, baseY - 150);
-    ctx.quadraticCurveTo(stemX, baseY - 200, stemX + 6, baseY - 150);
-    ctx.quadraticCurveTo(stemX + 14, baseY - 60, stemX + 4, baseY);
-    ctx.closePath();
-    ctx.fill();
-
-    // 叶片
-    ctx.fillStyle = "#66bb6a";
-    ctx.beginPath();
-    ctx.ellipse(stemX - 40, baseY - 110, 35, 18, -0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(stemX + 40, baseY - 120, 35, 18, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 塑料袋
-    ctx.strokeStyle = "rgba(255,255,255,0.9)";
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
-    ctx.beginPath();
-    ctx.moveTo(stemX - 90, baseY - 150);
-    ctx.quadraticCurveTo(stemX - 40, baseY - 220, stemX + 10, baseY - 220);
-    ctx.quadraticCurveTo(stemX + 70, baseY - 210, stemX + 90, baseY - 150);
-    ctx.lineTo(stemX + 70, baseY - 20);
-    ctx.lineTo(stemX - 70, baseY - 20);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, "#e1f5fe");
-    gradient.addColorStop(1, "#c8e6c9");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 太阳
-    ctx.fillStyle = "#ffeb3b";
-    ctx.beginPath();
-    ctx.arc(60, 50, 20 + light * 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    drawPlant();
-
-    // 水汽粒子
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    particles.forEach((p) => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // 袋中水滴
-    ctx.fillStyle = "#81d4fa";
-    ctx.beginPath();
-    const dropletHeight = bagDrops;
-    ctx.ellipse(canvas.width / 2, canvas.height - 40, 50, dropletHeight / 4, 0, 0, Math.PI, true);
-    ctx.fill();
-
-    ctx.fillStyle = "#01579b";
-    ctx.font = "14px Sans-Serif";
-    ctx.fillText(
-      `收集水量 ≈ ${(bagDrops / 5).toFixed(1)} mL`,
-      canvas.width / 2 - 60,
-      canvas.height - 10
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.4, 0.5, 5, 12),
+      new THREE.MeshStandardMaterial({ color: 0x66bb6a })
     );
-  }
+    stem.position.y = 2.5;
+    scene.add(stem);
 
-  function loop(timestamp) {
-    const dt = timestamp - lastTime || 16;
-    lastTime = timestamp;
-    update(dt);
-    draw();
-    requestAnimationFrame(loop);
-  }
+    const leaf = new THREE.Mesh(
+      new THREE.SphereGeometry(2.6, 24, 24, 0, Math.PI),
+      new THREE.MeshStandardMaterial({ color: 0x81c784, transparent: true, opacity: 0.8 })
+    );
+    leaf.rotation.z = Math.PI / 2;
+    leaf.position.set(0, 3.5, 0);
+    scene.add(leaf);
 
-  function handleLightChange(event) {
-    if (!event?.target) return;
-    light = Number(event.target.value);
-    if (lightValue) {
-      lightValue.textContent = light.toString();
+    const droplets = [];
+    for (let i = 0; i < 60; i++) {
+      const d = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08, 10, 10),
+        new THREE.MeshStandardMaterial({ color: 0x4fc3f7, emissive: 0x4fc3f7, emissiveIntensity: 0.5 })
+      );
+      d.position.set((Math.random() - 0.5) * 3, 2.2 + Math.random() * 1.4, (Math.random() - 0.5) * 1.4);
+      scene.add(d);
+      droplets.push(d);
     }
-  }
 
-  function handleHumidityChange(event) {
-    if (!event?.target) return;
-    humidity = Number(event.target.value);
-    if (humidityValue) {
-      humidityValue.textContent = `${humidity}%`;
-    }
-  }
-
-  lightSlider?.addEventListener("input", handleLightChange);
-  humiditySlider?.addEventListener("input", handleHumidityChange);
-  handleLightChange({ target: lightSlider });
-  handleHumidityChange({ target: humiditySlider });
-  requestAnimationFrame(loop);
+    updaters.push((delta, elapsed) => {
+      const speed = Number(slider?.value || 1);
+      droplets.forEach((d) => {
+        d.position.y += delta * speed * 0.8;
+        if (d.position.y > 6) d.position.y = 2 + Math.random();
+      });
+      leaf.scale.setScalar(1 + Math.sin(elapsed) * 0.02 * speed);
+    });
+  });
 }
 
 function initTriangleAngleSum() {
-  const canvas = document.getElementById("triangle-angle-canvas");
-  const chipsLayer = document.getElementById("triangle-angle-chips");
-  const foldBtn = document.getElementById("play-angle-fold");
-  const caption = document.getElementById("triangle-angle-caption");
-  if (!canvas || !canvas.getContext || !chipsLayer) return;
+  const foldBtn = getOrCreateButton("triangle-fold", "折叠角度", document.querySelector(".viz-card"));
+  createPlaySpace("triangle-canvas", { cameraPos: [0, 8, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 24);
 
-  const ctx = canvas.getContext("2d");
-  const points = [
-    { x: 70, y: 190 },
-    { x: 210, y: 60 },
-    { x: 310, y: 190 }
-  ];
+    const triangle = new THREE.Mesh(
+      new THREE.ConeGeometry(5, 0.2, 3),
+      new THREE.MeshStandardMaterial({ color: 0x90caf9, transparent: true, opacity: 0.7 })
+    );
+    triangle.rotation.x = -Math.PI / 2;
+    triangle.position.y = 0.2;
+    scene.add(triangle);
 
-  const chipConfigs = [
-    {
-      label: "∠A",
-      deg: 64,
-      color: "#ff8a80",
-      from: { x: 70, y: 190, rotate: -35 },
-      to: { x: 120, y: 235, rotate: 0 }
-    },
-    {
-      label: "∠B",
-      deg: 92,
-      color: "#7986cb",
-      from: { x: 210, y: 70, rotate: 0 },
-      to: { x: 190, y: 235, rotate: 0 }
-    },
-    {
-      label: "∠C",
-      deg: 24,
-      color: "#4db6ac",
-      from: { x: 315, y: 190, rotate: 34 },
-      to: { x: 260, y: 235, rotate: 0 }
-    }
-  ];
-
-  const chips = chipConfigs.map((cfg) => {
-    const el = document.createElement("div");
-    el.className = "angle-chip";
-    el.innerHTML = `<span>${cfg.label}</span><strong>${cfg.deg}°</strong>`;
-    el.style.setProperty("--chip-color", cfg.color);
-    chipsLayer.appendChild(el);
-    return { el, cfg };
-  });
-
-  function drawTriangle() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bg.addColorStop(0, "#e3f2fd");
-    bg.addColorStop(1, "#fafafa");
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#c8e6c9";
-    ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
-
-    const triGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    triGradient.addColorStop(0, "#90caf9");
-    triGradient.addColorStop(1, "#1e88e5");
-    ctx.fillStyle = triGradient;
-    ctx.strokeStyle = "#0d47a1";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    ctx.lineTo(points[1].x, points[1].y);
-    ctx.lineTo(points[2].x, points[2].y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    const arcs = [
-      { center: points[0], radius: 28, start: Math.PI * 0.8, end: Math.PI * 1.2, color: "#ff8a80" },
-      { center: points[1], radius: 28, start: Math.PI * 1.1, end: Math.PI * 1.9, color: "#7986cb" },
-      { center: points[2], radius: 28, start: Math.PI * -0.2, end: Math.PI * 0.2, color: "#4db6ac" }
-    ];
-    arcs.forEach((arc) => {
-      ctx.strokeStyle = arc.color;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(arc.center.x, arc.center.y, arc.radius, arc.start, arc.end);
-      ctx.stroke();
+    const wedges = [
+      { color: 0xff8a65, pos: [-2.5, 0.25, -2.5] },
+      { color: 0x4dd0e1, pos: [2.5, 0.25, -2.5] },
+      { color: 0x9575cd, pos: [0, 0.25, 3] }
+    ].map((w) => {
+      const wedge = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.4, 1.4, 0.4, 32, 1, false, -Math.PI / 2, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: w.color })
+      );
+      wedge.position.set(w.pos[0], w.pos[1], w.pos[2]);
+      scene.add(wedge);
+      return wedge;
     });
-  }
 
-  let aligned = false;
-
-  function applyChipPositions() {
-    chips.forEach(({ el, cfg }) => {
-      const target = aligned ? cfg.to : cfg.from;
-      el.style.left = `${target.x}px`;
-      el.style.top = `${target.y}px`;
-      el.style.transform = `translate(-50%, -50%) rotate(${target.rotate || 0}deg)`;
-    });
-    if (caption) {
-      caption.textContent = aligned
-        ? "三个角像拼图一样排成直线，总和 180°。"
-        : "点击按钮，把三角形的三个角剪下并拖去拼放。";
+    function fold() {
+      updaters.push((delta) => {
+        wedges[0].rotation.y = Math.min(Math.PI / 2, wedges[0].rotation.y + delta * 1.2);
+        wedges[1].rotation.y = Math.min(Math.PI / 2, wedges[1].rotation.y + delta * 1.2);
+        wedges[2].rotation.y = Math.max(0, wedges[2].rotation.y - delta * 1.2);
+      });
     }
-    if (foldBtn) {
-      foldBtn.textContent = aligned ? "复位三角形" : "折叠成一条直线";
-    }
-  }
 
-  foldBtn?.addEventListener("click", () => {
-    aligned = !aligned;
-    applyChipPositions();
+    foldBtn.addEventListener("click", fold);
   });
-
-  drawTriangle();
-  applyChipPositions();
 }
 
 function initPlaceValueMachine() {
   const slider = document.getElementById("place-value-slider");
-  const numberInput = document.getElementById("place-value-input");
-  const randomBtn = document.getElementById("place-value-random");
-  const grid = document.getElementById("place-value-grid");
+  const input = document.getElementById("place-value-input");
+  const randomBtn = document.getElementById("place-value-random") || getOrCreateButton("place-value-random", "随机一个数字", document.querySelector(".viz-card"));
   const summary = document.getElementById("place-value-summary");
-  if (!slider || !numberInput || !grid || !summary) return;
 
-  const places = [
-    { id: "thousand", label: "千位", unit: 1000, color: "#ff8a80" },
-    { id: "hundred", label: "百位", unit: 100, color: "#ffb74d" },
-    { id: "ten", label: "十位", unit: 10, color: "#4dd0e1" },
-    { id: "one", label: "个位", unit: 1, color: "#7e57c2" }
-  ];
+  createPlaySpace("place-value-grid", { cameraPos: [0, 8, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 26);
 
-  grid.innerHTML = places
-    .map(
-      (place) => `
-      <div class="place-column" data-place="${place.id}">
-        <header>
-          <span class="place-label">${place.label}</span>
-          <span class="place-unit">× ${place.unit}</span>
-        </header>
-        <div class="place-token-wrap"></div>
-      </div>
-    `
-    )
-    .join("");
+    const belts = [
+      { x: -4, color: 0xffb74d },
+      { x: 0, color: 0x4fc3f7 },
+      { x: 4, color: 0x81c784 },
+      { x: 8, color: 0xba68c8 }
+    ];
 
-  function render(value) {
-    const safeValue = Math.max(0, Math.min(9999, Number(value) || 0));
-    slider.value = safeValue.toString();
-    numberInput.value = safeValue.toString();
-    const digits = {
-      thousand: Math.floor(safeValue / 1000),
-      hundred: Math.floor((safeValue % 1000) / 100),
-      ten: Math.floor((safeValue % 100) / 10),
-      one: safeValue % 10
-    };
-    const terms = [];
-    places.forEach((place) => {
-      const wrap = grid.querySelector(
-        `.place-column[data-place="${place.id}"] .place-token-wrap`
+    const balls = belts.map((belt, idx) => {
+      const track = new THREE.Mesh(
+        new THREE.BoxGeometry(2.6, 0.2, 8),
+        new THREE.MeshStandardMaterial({ color: belt.color, transparent: true, opacity: 0.5 })
       );
-      if (!wrap) return;
-      wrap.innerHTML = "";
-      const count = digits[place.id];
-      for (let i = 0; i < count; i++) {
-        const token = document.createElement("span");
-        token.className = "place-token";
-        token.style.setProperty("--token-color", place.color);
-        token.textContent = place.label[0];
-        token.style.animationDelay = `${i * 60}ms`;
-        wrap.appendChild(token);
+      track.position.set(belt.x, 0.2, 0);
+      scene.add(track);
+
+      const group = [];
+      for (let i = 0; i < 10; i++) {
+        const ball = new THREE.Mesh(
+          new THREE.SphereGeometry(idx >= 2 ? 0.6 : 0.45, 14, 14),
+          new THREE.MeshStandardMaterial({ color: belt.color, emissive: belt.color, emissiveIntensity: 0.25 })
+        );
+        ball.position.set(belt.x + (Math.random() - 0.5) * 1.4, 0.6, -3 + i * 0.65);
+        scene.add(ball);
+        group.push(ball);
       }
-      if (count > 0) {
-        terms.push(`${count} × ${place.unit}`);
-      }
+      return group;
     });
-    summary.textContent = terms.length
-      ? `${safeValue} = ${terms.join(" + ")}`
-      : "这个数没有千位或百位，也是一种拆分。";
-  }
 
-  slider.addEventListener("input", (event) => render(event?.target?.value));
-  numberInput.addEventListener("input", (event) => render(event?.target?.value));
-  randomBtn?.addEventListener("click", () => {
-    const randomValue = Math.floor(Math.random() * 10000);
-    render(randomValue);
+    function applyValue(num) {
+      const n = Math.max(0, Math.min(9999, Math.floor(num)));
+      if (slider) slider.value = String(n);
+      if (input) input.value = String(n);
+
+      const digits = [Math.floor(n / 1000), Math.floor((n % 1000) / 100), Math.floor((n % 100) / 10), n % 10];
+      belts.forEach((belt, idx) => {
+        const count = digits[idx];
+        balls[idx].forEach((ball, i) => {
+          ball.visible = i < count;
+          ball.position.z = -3 + i * 0.65;
+        });
+      });
+
+      if (summary) {
+        summary.textContent = `${n} = ${digits[0]}×1000 + ${digits[1]}×100 + ${digits[2]}×10 + ${digits[3]}`;
+      }
+    }
+
+    slider?.addEventListener("input", (e) => applyValue(Number(e?.target?.value || 0)));
+    input?.addEventListener("input", (e) => applyValue(Number(e?.target?.value || 0)));
+    randomBtn?.addEventListener("click", () => {
+      const val = Math.floor(Math.random() * 10000);
+      applyValue(val);
+    });
+
+    updaters.push((delta, elapsed) => {
+      balls.flat().forEach((ball, idx) => {
+        if (!ball.visible) return;
+        ball.position.y = 0.6 + Math.sin(elapsed * 2 + idx) * 0.05;
+      });
+    });
+
+    applyValue(Number(slider?.value || 3578));
   });
-
-  render(Number(slider.value || 0));
 }
 
 function initProbabilitySpinner() {
-  const canvas = document.getElementById("spinner-canvas");
-  const spinBtn = document.getElementById("spin-btn");
-  const resultText = document.getElementById("spin-result");
-  const statsEl = document.getElementById("spin-stats");
-  if (!canvas || !canvas.getContext || !spinBtn || !statsEl) return;
+  const spinBtn = getOrCreateButton("spin-wheel", "旋转转盘", document.querySelector(".viz-card"));
+  createPlaySpace("spinner-canvas", { cameraPos: [0, 8, 14], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 22);
 
-  const ctx = canvas.getContext("2d");
-  const radius = Math.min(canvas.width, canvas.height) / 2 - 10;
-  const pointerAngle = -Math.PI / 2;
-  const segments = [
-    { label: "蓝色 2 份", color: "#42a5f5", weight: 2 },
-    { label: "黄色 3 份", color: "#ffeb3b", weight: 3 },
-    { label: "粉色 1 份", color: "#f48fb1", weight: 1 },
-    { label: "绿色 2 份", color: "#81c784", weight: 2 }
-  ];
-  const totalWeight = segments.reduce((sum, seg) => sum + seg.weight, 0);
-  let rotation = 0;
-  let startRotation = 0;
-  let targetRotation = 0;
-  let spinning = false;
-  let animStart = 0;
-  let currentTarget = null;
-  const counts = new Map();
-  segments.forEach((seg) => counts.set(seg.label, 0));
-  let total = 0;
+    const wheel = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.5, 3.5, 0.4, 32),
+      new THREE.MeshStandardMaterial({ color: 0xfff59d, emissive: 0xfff59d, emissiveIntensity: 0.3 })
+    );
+    wheel.rotation.x = Math.PI / 2;
+    wheel.position.y = 0.8;
+    scene.add(wheel);
 
-  const segmentAngles = segments.map((seg, index) => {
-    const previousAngle = segments
-      .slice(0, index)
-      .reduce((sum, item) => sum + (item.weight / totalWeight) * Math.PI * 2, 0);
-    const angleSize = (seg.weight / totalWeight) * Math.PI * 2;
-    return { ...seg, start: previousAngle, end: previousAngle + angleSize };
-  });
+    const pointer = new THREE.Mesh(
+      new THREE.ConeGeometry(0.3, 0.8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xe53935 })
+    );
+    pointer.position.set(0, 2.2, 0);
+    scene.add(pointer);
 
-  function drawSpinner() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(rotation);
-    segmentAngles.forEach((seg) => {
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.fillStyle = seg.color;
-      ctx.arc(0, 0, radius, seg.start, seg.end);
-      ctx.closePath();
-      ctx.fill();
-      ctx.save();
-      ctx.rotate((seg.start + seg.end) / 2);
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#263238";
-      ctx.font = "bold 13px Sans-Serif";
-      ctx.fillText(seg.label, radius * 0.6, 0);
-      ctx.restore();
+    let angular = 0;
+    updaters.push((delta) => {
+      wheel.rotation.y += angular * delta;
+      angular = Math.max(0, angular - delta * 0.6);
     });
-    ctx.restore();
 
-    ctx.fillStyle = "#546e7a";
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2 - 12, 10);
-    ctx.lineTo(canvas.width / 2 + 12, 10);
-    ctx.lineTo(canvas.width / 2, 44);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, 20, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function updateStats() {
-    const rows = segments
-      .map((seg) => {
-        const count = counts.get(seg.label) || 0;
-        const rate = total ? ((count / total) * 100).toFixed(1) : "0.0";
-        return `<li>${seg.label}：<strong>${count}</strong> 次（${rate}%）</li>`;
-      })
-      .join("");
-    statsEl.innerHTML = `<ul class="spin-stats-list">${rows}</ul>`;
-  }
-
-  function animate(timestamp) {
-    if (!spinning) {
-      drawSpinner();
-      return;
-    }
-    if (!animStart) {
-      animStart = timestamp;
-    }
-    const duration = 2600;
-    const progress = Math.min(1, (timestamp - animStart) / duration);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    rotation = startRotation + (targetRotation - startRotation) * eased;
-    drawSpinner();
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-      return;
-    }
-    rotation = targetRotation;
-    spinning = false;
-    animStart = 0;
-    if (currentTarget) {
-      total += 1;
-      counts.set(currentTarget.label, (counts.get(currentTarget.label) || 0) + 1);
-      updateStats();
-      if (resultText) {
-        resultText.textContent = `结果：${currentTarget.label}`;
-      }
-    }
-  }
-
-  function spin() {
-    if (spinning) return;
-    const r = Math.random() * totalWeight;
-    let accumulated = 0;
-    let selected = segmentAngles[0];
-    for (const seg of segmentAngles) {
-      accumulated += seg.weight;
-      if (r <= accumulated) {
-        selected = seg;
-        break;
-      }
-    }
-    const randomAngle = selected.start + Math.random() * (selected.end - selected.start);
-    const angleNow = randomAngle + rotation;
-    let delta = pointerAngle - angleNow;
-    const circle = Math.PI * 2;
-    delta = ((delta % circle) + circle) % circle;
-    const extraTurns = circle * 2 + Math.random() * circle;
-    startRotation = rotation;
-    targetRotation = rotation + delta + extraTurns;
-    spinning = true;
-    animStart = 0;
-    currentTarget = selected;
-    requestAnimationFrame(animate);
-  }
-
-  spinBtn.addEventListener("click", spin);
-  updateStats();
-  drawSpinner();
+    spinBtn.addEventListener("click", () => {
+      angular = 3 + Math.random();
+    });
+  });
 }
 
 function initSpeedDistance() {
   const distanceInput = document.getElementById("distance-input");
   const timeInput = document.getElementById("time-input");
+  const startBtn = document.getElementById("start-speed-run") || getOrCreateButton("start-speed-run", "开始跑道", document.querySelector(".viz-card"));
   const distanceValue = document.getElementById("distance-value");
   const timeValue = document.getElementById("time-value");
-  const startBtn = document.getElementById("start-speed-run");
-  const track = document.getElementById("speed-track");
-  const car = document.getElementById("speed-car");
-  const progressBar = document.getElementById("speed-progress");
   const info = document.getElementById("speed-info");
-  if (!distanceInput || !timeInput || !track || !car) return;
+  const progress = document.getElementById("speed-progress");
 
-  function updateLabels() {
-    if (distanceValue) distanceValue.textContent = `${distanceInput.value} 米`;
-    if (timeValue) timeValue.textContent = `${timeInput.value} 秒`;
-    const time = Number(timeInput.value);
-    const distance = Number(distanceInput.value);
-    if (info) {
-      if (time > 0) {
-        info.textContent = `平均速度 ≈ ${(distance / time).toFixed(1)} 米/秒`;
-      } else {
-        info.textContent = "设置跑道参数再点击开始。";
-      }
-    }
-  }
+  createPlaySpace("speed-track", { cameraPos: [0, 7, 16] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 30);
 
-  function playRun() {
-    const distance = Math.max(10, Number(distanceInput.value));
-    const time = Math.max(1, Number(timeInput.value));
-    const duration = Math.max(1500, time * 180);
-    const trackWidth = track.clientWidth - car.clientWidth;
-    car.style.transition = "none";
-    car.style.transform = "translateX(0)";
-    if (progressBar) {
-      progressBar.style.transition = "none";
-      progressBar.style.width = "0%";
+    const car = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 0.8, 0.9),
+      new THREE.MeshStandardMaterial({ color: 0x42a5f5, metalness: 0.3 })
+    );
+    car.position.y = 0.6;
+    scene.add(car);
+
+    let runTime = Number(timeInput?.value || 30);
+    let distance = Number(distanceInput?.value || 180);
+    let elapsedRun = 0;
+    let running = false;
+
+    function updateLabels() {
+      if (distanceValue) distanceValue.textContent = `${distance} 米`;
+      if (timeValue) timeValue.textContent = `${runTime} 秒`;
+      if (info) info.textContent = `速度 = 距离 ÷ 时间 = ${(distance / runTime).toFixed(2)} m/s`;
     }
-    void car.offsetWidth;
-    requestAnimationFrame(() => {
-      car.style.transition = `transform ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-      car.style.transform = `translateX(${trackWidth}px)`;
-      if (progressBar) {
-        progressBar.style.transition = `width ${duration}ms linear`;
-        progressBar.style.width = "100%";
-      }
-      if (info) {
-        const speedValue = distance / time;
-        info.textContent = `跑完 ${distance} 米用时 ${time} 秒，平均速度 ≈ ${speedValue.toFixed(2)} m/s`;
-      }
+
+    function startRun() {
+      elapsedRun = 0;
+      running = true;
+    }
+
+    distanceInput?.addEventListener("input", (e) => {
+      distance = Number(e?.target?.value || distance);
+      updateLabels();
     });
-  }
+    timeInput?.addEventListener("input", (e) => {
+      runTime = Number(e?.target?.value || runTime);
+      updateLabels();
+    });
+    startBtn?.addEventListener("click", startRun);
 
-  distanceInput.addEventListener("input", updateLabels);
-  timeInput.addEventListener("input", updateLabels);
-  startBtn?.addEventListener("click", playRun);
-  updateLabels();
+    updaters.push((delta) => {
+      if (!running) return;
+      elapsedRun += delta;
+      const t = Math.min(1, elapsedRun / runTime);
+      car.position.x = -6 + 12 * t;
+      car.rotation.y = Math.sin(t * Math.PI) * 0.2;
+      if (progress) progress.style.width = `${t * 100}%`;
+      if (t >= 1) running = false;
+    });
+
+    updateLabels();
+  });
 }
 
 function initSymmetryFolding() {
-  const canvas = document.getElementById("symmetry-canvas");
-  const foldBtn = document.getElementById("symmetry-fold");
-  const changeBtn = document.getElementById("symmetry-change");
-  const label = document.getElementById("symmetry-shape-name");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
+  const foldBtn = getOrCreateButton("fold-paper", "对折纸张", document.querySelector(".viz-card"));
+  createPlaySpace("symmetry-paper", { cameraPos: [0, 8, 12], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 20);
 
-  const shapes = [
-    {
-      name: "叶子",
-      color: "#66bb6a",
-      drawLeft(drawCtx) {
-        drawCtx.beginPath();
-        drawCtx.moveTo(0, -80);
-        drawCtx.bezierCurveTo(-100, -40, -100, 40, 0, 80);
-        drawCtx.closePath();
-        drawCtx.fillStyle = this.color;
-        drawCtx.fill();
-      }
-    },
-    {
-      name: "风筝",
-      color: "#29b6f6",
-      drawLeft(drawCtx) {
-        drawCtx.beginPath();
-        drawCtx.moveTo(0, -90);
-        drawCtx.lineTo(-70, 0);
-        drawCtx.lineTo(0, 90);
-        drawCtx.closePath();
-        drawCtx.fillStyle = this.color;
-        drawCtx.fill();
-        drawCtx.strokeStyle = "rgba(0,0,0,0.2)";
-        drawCtx.stroke();
-      }
-    },
-    {
-      name: "蝴蝶翅膀",
-      color: "#f48fb1",
-      drawLeft(drawCtx) {
-        drawCtx.beginPath();
-        drawCtx.moveTo(0, -60);
-        drawCtx.bezierCurveTo(-140, -80, -120, 20, 0, 30);
-        drawCtx.bezierCurveTo(-130, 50, -70, 110, 0, 70);
-        drawCtx.closePath();
-        drawCtx.fillStyle = this.color;
-        drawCtx.fill();
-      }
-    }
-  ];
+    const left = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 0.1, 6),
+      new THREE.MeshStandardMaterial({ color: 0x90caf9, transparent: true, opacity: 0.7 })
+    );
+    left.position.set(-2.1, 0.1, 0);
+    scene.add(left);
 
-  let shapeIndex = 0;
-  let progress = 0;
-  let target = 0;
+    const right = new THREE.Mesh(
+      new THREE.BoxGeometry(4, 0.1, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffcc80, transparent: true, opacity: 0.7 })
+    );
+    right.position.set(2.1, 0.1, 0);
+    scene.add(right);
 
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, "#e8eaf6");
-    grad.addColorStop(1, "#fff");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = "#9fa8da";
-    ctx.setLineDash([8, 6]);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, 10);
-    ctx.lineTo(canvas.width / 2, canvas.height - 10);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const shape = shapes[shapeIndex];
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    shape.drawLeft(ctx);
-    ctx.restore();
-
-    if (progress > 0) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(canvas.width / 2, 0, (canvas.width / 2) * progress, canvas.height);
-      ctx.clip();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.scale(-1, 1);
-      shape.drawLeft(ctx);
-      ctx.restore();
+    function fold() {
+      updaters.push((delta) => {
+        left.rotation.z = Math.max(-Math.PI, left.rotation.z - delta * 2);
+        right.rotation.z = Math.min(Math.PI, right.rotation.z + delta * 2);
+      });
     }
 
-    if (label) {
-      label.textContent = `${shape.name} · 折叠完成 ${Math.round(progress * 100)}%`;
-    }
-  }
-
-  function loop() {
-    progress += (target - progress) * 0.08;
-    if (Math.abs(target - progress) < 0.001) {
-      progress = target;
-    }
-    draw();
-    requestAnimationFrame(loop);
-  }
-
-  foldBtn?.addEventListener("click", () => {
-    target = target > 0.5 ? 0 : 1;
-    foldBtn.textContent = target > 0.5 ? "展开一半" : "继续折叠";
+    foldBtn.addEventListener("click", fold);
   });
-
-  changeBtn?.addEventListener("click", () => {
-    shapeIndex = (shapeIndex + 1) % shapes.length;
-    target = 0;
-  });
-
-  loop();
 }
 
 function initPlanetOrbits() {
-  const container = document.getElementById("orbit-3d");
-  const speedSlider = document.getElementById("orbit3d-speed");
-  const speedValue = document.getElementById("orbit3d-speed-value");
-  const toggleBtn = document.getElementById("orbit3d-toggle");
-  const trailsToggle = document.getElementById("orbit3d-trails");
-  const themeBtn = document.getElementById("orbit3d-theme");
-  const progressEl = document.getElementById("orbit-progress");
-  const storyEl = document.getElementById("orbit-story");
-  if (!container || typeof THREE === "undefined") return;
+  const accel = getOrCreateButton("orbit-boost", "加速公转", document.querySelector(".viz-card"));
+  createPlaySpace("orbit-stage", { cameraPos: [0, 10, 18], background: 0x0d47a1, showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  const width = container.clientWidth;
-  const height = container.clientHeight || 420;
-  renderer.setSize(width, height);
-  renderer.setPixelRatio(window.devicePixelRatio || 1);
-  renderer.setClearColor(0x000000, 0);
-  container.appendChild(renderer.domElement);
-
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0c1021, 0.018);
-
-  const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 200);
-  camera.position.set(-4, 10, 22);
-  camera.lookAt(0, 0, 0);
-
-  const world = new THREE.Group();
-  scene.add(world);
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  const sunLight = new THREE.PointLight(0xffe082, 1.75, 85);
-  scene.add(sunLight);
-
-  const stars = createStarField();
-  scene.add(stars);
-
-  const sunMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffeb3b,
-    emissive: 0xffa000,
-    emissiveIntensity: 1.4,
-    roughness: 0.35,
-    metalness: 0.15
-  });
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(2.5, 48, 48), sunMaterial);
-  world.add(sun);
-  sunLight.position.copy(sun.position);
-
-  const planetGroup = new THREE.Group();
-  world.add(planetGroup);
-  const orbitLines = [];
-  const clickableMeshes = [];
-  const discovered = new Set();
-  let earthTexture = null;
-
-  const planets = [
-    {
-      name: "水星",
-      orbit: 5.2,
-      size: 0.65,
-      speed: 1.6,
-      color: "#ffcc80",
-      fact: "水星像短跑健将，差不多88天就跑完一圈。"
-    },
-    {
-      name: "金星",
-      orbit: 7.6,
-      size: 0.85,
-      speed: 1.2,
-      color: "#ffab91",
-      fact: "金星的表面很热，但绕行速度排在第二名。"
-    },
-    {
-      name: "地球",
-      orbit: 10.6,
-      size: 0.95,
-      speed: 1,
-      color: "#64b5f6",
-      fact: "地球跑一圈大约365天，是我们熟悉的一年。",
-      spin: 0.8,
-      tilt: 23.5
-    },
-    {
-      name: "火星",
-      orbit: 13.8,
-      size: 0.8,
-      speed: 0.53,
-      color: "#ef9a9a",
-      fact: "火星离太阳更远，要花将近两年才跑一圈。"
-    }
-  ];
-
-  planets.forEach((planet) => {
-    const orbitLine = createOrbitRing(planet.orbit, planet.color);
-    orbitLines.push(orbitLine);
-    planetGroup.add(orbitLine);
-
-    const geometry = new THREE.SphereGeometry(planet.size, 40, 32);
-    let material = new THREE.MeshStandardMaterial({
-      color: planet.color,
-      roughness: 0.4,
-      metalness: 0.18
-    });
-
-    let mesh = null;
-    if (planet.name === "地球") {
-      if (!earthTexture) {
-        earthTexture = createEarthTexture();
-      }
-      material = new THREE.MeshPhongMaterial({
-        map: earthTexture,
-        shininess: 18,
-        specular: new THREE.Color(0x8ab4f8)
-      });
-      mesh = new THREE.Mesh(geometry, material);
-      mesh.userData = { ...planet, baseScale: 1 };
-      mesh.rotation.z = THREE.MathUtils.degToRad(planet.tilt || 0);
-
-      const atmosphere = new THREE.Mesh(
-        new THREE.SphereGeometry(planet.size * 1.06, 40, 32),
-        new THREE.MeshPhongMaterial({
-          color: 0x9ad5ff,
-          transparent: true,
-          opacity: 0.18,
-          blending: THREE.AdditiveBlending,
-          side: THREE.BackSide,
-          depthWrite: false
-        })
-      );
-      atmosphere.rotation.copy(mesh.rotation);
-
-      const holder = new THREE.Group();
-      holder.add(mesh);
-      holder.add(atmosphere);
-      holder.userData = { ...planet, baseScale: 1 };
-      planet.mesh = holder;
-      planet.body = mesh;
-      planet.angle = Math.random() * Math.PI * 2;
-      planetGroup.add(holder);
-      clickableMeshes.push(mesh);
-    } else {
-      mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(planet.orbit, 0, 0);
-      mesh.userData = { ...planet, baseScale: 1 };
-      planet.mesh = mesh;
-      planet.angle = Math.random() * Math.PI * 2;
-      planetGroup.add(mesh);
-      clickableMeshes.push(mesh);
-    }
-  });
-
-  let speedFactor = Number(speedSlider?.value || 1);
-  let running = true;
-  let dragStartX = 0;
-  let dragMoved = false;
-  let dragging = false;
-  const clock = new THREE.Clock();
-
-  function createOrbitRing(radius, color) {
-    const segments = 128;
-    const points = [];
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
-    }
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineDashedMaterial({
-      color,
-      dashSize: 0.45,
-      gapSize: 0.25,
-      linewidth: 1
-    });
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-    line.material.transparent = true;
-    line.material.opacity = 0.7;
-    return line;
-  }
-
-  function createStarField() {
-    const starCount = 520;
-    const positions = [];
-    for (let i = 0; i < starCount; i++) {
-      const r = 60 + Math.random() * 50;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI;
-      positions.push(
-        Math.sin(phi) * Math.cos(theta) * r,
-        Math.sin(phi) * Math.sin(theta) * r,
-        Math.cos(phi) * r
-      );
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.16,
-      transparent: true,
-      opacity: 0.9
-    });
-    return new THREE.Points(geometry, material);
-  }
-
-  // 生成简易的地球纹理（陆地、海洋、云层）
-  function createEarthTexture() {
-    const size = 512;
-    const canvas = document.createElement("canvas");
-    canvas.width = size * 2;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-
-    // 海洋底色
-    const ocean = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    ocean.addColorStop(0, "#0b3c6f");
-    ocean.addColorStop(1, "#0d5b9b");
-    ctx.fillStyle = ocean;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 陆地形状（用多段曲线画出块状大陆）
-    const landColor = "#8bc34a";
-    const shadowLand = "#6fa043";
-    function drawLand(xStart, yStart, scale, flip = false) {
-      ctx.save();
-      ctx.translate(xStart, yStart);
-      ctx.scale(flip ? -scale : scale, scale);
-      ctx.beginPath();
-      ctx.moveTo(10, 80);
-      ctx.bezierCurveTo(90, 40, 140, 60, 160, 120);
-      ctx.bezierCurveTo(170, 180, 120, 210, 60, 200);
-      ctx.bezierCurveTo(20, 170, -10, 130, 10, 80);
-      ctx.closePath();
-      ctx.fillStyle = landColor;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(30, 110);
-      ctx.bezierCurveTo(90, 90, 110, 140, 90, 170);
-      ctx.bezierCurveTo(60, 185, 40, 150, 30, 110);
-      ctx.closePath();
-      ctx.fillStyle = shadowLand;
-      ctx.fill();
-      ctx.restore();
-    }
-    drawLand(120, 140, 1.2, false);
-    drawLand(380, 180, 0.9, true);
-    drawLand(620, 130, 1.1, false);
-    drawLand(900, 170, 0.8, true);
-
-    // 简易极地冰盖
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillRect(0, 0, canvas.width, 24);
-    ctx.fillRect(0, canvas.height - 24, canvas.width, 24);
-
-    // 云层
-    for (let i = 0; i < 140; i++) {
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      const r = 12 + Math.random() * 18;
-      const alpha = 0.08 + Math.random() * 0.1;
-      ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
-      ctx.beginPath();
-      ctx.ellipse(x, y, r * 1.4, r, Math.random() * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.anisotropy = 4;
-    return texture;
-  }
-
-  function updateProgress() {
-    if (!progressEl) return;
-    const total = planets.length;
-    const collected = discovered.size;
-    const finished = collected === total;
-    const encouragement = finished
-      ? "恭喜集齐全部行星卡片！"
-      : "继续点击剩下的行星，小博士加油～";
-    progressEl.textContent = `已收集 ${collected}/${total} 个行星小知识 · ${encouragement}`;
-  }
-
-  function speak(planet) {
-    if (!storyEl) return;
-    storyEl.innerHTML = `<strong>${planet.name}</strong>：${planet.fact} <br>你真棒！再看看其他行星有什么秘密呢？`;
-  }
-
-  function highlight(mesh) {
-    const target = mesh.userData?.baseScale || 1;
-    mesh.scale.setScalar(target * 1.25);
-    setTimeout(() => {
-      mesh.scale.setScalar(target);
-    }, 360);
-  }
-
-  function handleClick(event) {
-    if (dragMoved) return;
-    const rect = renderer.domElement.getBoundingClientRect();
-    const pointer = new THREE.Vector2(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    const sun = new THREE.Mesh(
+      new THREE.SphereGeometry(1.4, 24, 24),
+      new THREE.MeshStandardMaterial({ color: 0xffca28, emissive: 0xffb300, emissiveIntensity: 0.8 })
     );
+    scene.add(sun);
 
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(clickableMeshes);
-    if (hits.length > 0) {
-      const mesh = hits[0].object;
-      const planet = mesh.userData;
-      discovered.add(planet.name);
-      updateProgress();
-      speak(planet);
-      highlight(mesh);
-    }
-  }
+    const planets = [
+      { radius: 4, speed: 0.6, color: 0x81d4fa },
+      { radius: 7, speed: 0.4, color: 0x9575cd },
+      { radius: 10, speed: 0.25, color: 0xffab91 }
+    ].map((p) => {
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.6, 18, 18),
+        new THREE.MeshStandardMaterial({ color: p.color })
+      );
+      scene.add(body);
+      return { ...p, body };
+    });
 
-  function animate() {
-    const delta = clock.getDelta();
-    if (running) {
-      planets.forEach((planet) => {
-        planet.angle += delta * planet.speed * speedFactor;
-        const x = Math.cos(planet.angle) * planet.orbit;
-        const z = Math.sin(planet.angle) * planet.orbit;
-        planet.mesh.position.set(x, 0, z);
-        if (planet.body && planet.spin) {
-          planet.body.rotation.y += delta * planet.spin;
-        }
+    let boost = 1;
+    accel.addEventListener("click", () => {
+      boost = boost === 1 ? 2 : 1;
+    });
+
+    updaters.push((delta, elapsed) => {
+      planets.forEach((p, idx) => {
+        const angle = elapsed * p.speed * boost + idx;
+        p.body.position.set(Math.cos(angle) * p.radius, 0.6, Math.sin(angle) * p.radius);
+        p.body.scale.x = 1 + Math.sin(angle) * 0.05;
       });
-    }
-    world.rotation.y += (dragging ? 0 : 0.02) * delta * 60;
-    renderer.render(scene, camera);
-    requestAnimationFrame(animate);
-  }
-
-  function resize() {
-    const newWidth = container.clientWidth;
-    const newHeight = container.clientHeight || 420;
-    renderer.setSize(newWidth, newHeight);
-    camera.aspect = newWidth / newHeight;
-    camera.updateProjectionMatrix();
-  }
-
-  container.addEventListener("pointerdown", (event) => {
-    dragging = true;
-    dragMoved = false;
-    dragStartX = event.clientX;
-    container.setPointerCapture(event.pointerId);
-  });
-
-  container.addEventListener("pointermove", (event) => {
-    if (!dragging) return;
-    const diff = event.clientX - dragStartX;
-    if (Math.abs(diff) > 3) {
-      dragMoved = true;
-    }
-    world.rotation.y += diff * 0.004;
-    dragStartX = event.clientX;
-  });
-
-  container.addEventListener("pointerup", (event) => {
-    dragging = false;
-    container.releasePointerCapture(event.pointerId);
-    setTimeout(() => {
-      dragMoved = false;
-    }, 20);
-  });
-
-  container.addEventListener("click", handleClick);
-
-  speedSlider?.addEventListener("input", (event) => {
-    speedFactor = Number(event?.target?.value) || 1;
-    speedValue && (speedValue.textContent = `${speedFactor.toFixed(1)}×`);
-  });
-
-  toggleBtn?.addEventListener("click", () => {
-    running = !running;
-    toggleBtn.textContent = running ? "暂停公转" : "继续公转";
-  });
-
-  trailsToggle?.addEventListener("change", (event) => {
-    const visible = Boolean(event?.target?.checked);
-    orbitLines.forEach((line) => {
-      line.visible = visible;
     });
   });
-
-  themeBtn?.addEventListener("click", () => {
-    container.classList.toggle("day-mode");
-    const usingDay = container.classList.contains("day-mode");
-    renderer.setClearColor(0x000000, usingDay ? 0 : 0);
-    stars.visible = !usingDay;
-    scene.fog = usingDay ? new THREE.FogExp2(0xf1f5ff, 0.03) : new THREE.FogExp2(0x0c1021, 0.018);
-    themeBtn.textContent = usingDay ? "切换星空" : "切换星空/教室";
-  });
-
-  window.addEventListener("resize", resize);
-  speedValue && (speedValue.textContent = `${speedFactor.toFixed(1)}×`);
-  updateProgress();
-  animate();
 }
 
 function initSoundWaves() {
-  const canvas = document.getElementById("sound-wave-canvas");
-  const freqSlider = document.getElementById("sound-frequency");
-  const ampSlider = document.getElementById("sound-amplitude");
-  const freqValue = document.getElementById("sound-frequency-value");
-  const ampValue = document.getElementById("sound-amplitude-value");
-  const info = document.getElementById("sound-wave-info");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
+  const clapBtn = getOrCreateButton("sound-clap", "拍手/鼓点", document.querySelector(".viz-card"));
+  createPlaySpace("sound-canvas", { cameraPos: [0, 7, 14], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 22);
 
-  let frequency = Number(freqSlider?.value || 4);
-  let amplitude = Number(ampSlider?.value || 30);
-  let phase = 0;
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const center = canvas.height / 2;
-    ctx.fillStyle = "#f5f5f5";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = "#cfd8dc";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, center);
-    ctx.lineTo(canvas.width, center);
-    ctx.stroke();
-
-    ctx.strokeStyle = "#ff7043";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    for (let x = 0; x <= canvas.width; x++) {
-      const y = center + Math.sin((x + phase) * (frequency * 0.03)) * amplitude;
-      if (x === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
+    const rings = [];
+    for (let i = 0; i < 5; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(1 + i * 0.8, 0.06, 12, 60),
+        new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x29b6f6 : 0xff7043, transparent: true, opacity: 0.4 })
+      );
+      ring.rotation.x = Math.PI / 2;
+      scene.add(ring);
+      rings.push(ring);
     }
-    ctx.stroke();
 
-    ctx.fillStyle = "rgba(255,112,67,0.2)";
-    ctx.beginPath();
-    ctx.moveTo(0, center);
-    for (let x = 0; x <= canvas.width; x++) {
-      const y = center + Math.sin((x + phase) * (frequency * 0.03)) * amplitude;
-      ctx.lineTo(x, y);
+    function pulse() {
+      updaters.push((delta, elapsed) => {
+        rings.forEach((ring, idx) => {
+          const scale = 1 + ((elapsed * 0.8 + idx * 0.15) % 2);
+          ring.scale.setScalar(scale);
+          ring.material.opacity = Math.max(0, 0.6 - (scale - 1) * 0.3);
+        });
+      });
     }
-    ctx.lineTo(canvas.width, center);
-    ctx.closePath();
-    ctx.fill();
-  }
 
-  function loop() {
-    phase += frequency * 0.5;
-    draw();
-    requestAnimationFrame(loop);
-  }
-
-  function updateInfo() {
-    if (freqValue) freqValue.textContent = `${frequency} Hz`;
-    if (ampValue) ampValue.textContent = `${amplitude.toFixed(0)} px`;
-    if (info) {
-      info.textContent = "调节频率与振幅，观察波峰的疏密与高度变化。";
-    }
-  }
-
-  freqSlider?.addEventListener("input", (event) => {
-    frequency = Number(event?.target?.value) || frequency;
-    updateInfo();
+    pulse();
+    clapBtn.addEventListener("click", pulse);
   });
-  ampSlider?.addEventListener("input", (event) => {
-    amplitude = Number(event?.target?.value) || amplitude;
-    updateInfo();
-  });
-
-  updateInfo();
-  draw();
-  requestAnimationFrame(loop);
 }
 
 function initParticleStates() {
-  const canvas = document.getElementById("particle-state-canvas");
-  const slider = document.getElementById("particle-temperature");
-  const valueEl = document.getElementById("particle-temperature-value");
-  const info = document.getElementById("particle-state-info");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
+  createPlaySpace("particle-canvas", { cameraPos: [0, 7, 14], background: 0xeceff1 }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 20);
 
-  const width = canvas.width;
-  const height = canvas.height;
-  const sections = [
-    { name: "固态", start: 0, end: width / 3, color: "#90caf9" },
-    { name: "液态", start: width / 3, end: (width / 3) * 2, color: "#80cbc4" },
-    { name: "气态", start: (width / 3) * 2, end: width, color: "#ffe082" }
-  ];
+    const states = [
+      { center: [-4, 0.4, 0], spread: 0.4, color: 0x8d6e63, speed: 0.5 },
+      { center: [0, 0.4, 0], spread: 1, color: 0x4db6ac, speed: 1.2 },
+      { center: [4, 0.4, 0], spread: 2, color: 0x29b6f6, speed: 2 }
+    ];
 
-  const particles = [];
-  sections.forEach((section, index) => {
-    const count = index === 0 ? 24 : 28;
-    for (let i = 0; i < count; i++) {
-      const span = section.end - section.start;
-      const x = section.start + 20 + Math.random() * (span - 40);
-      const y = 40 + Math.random() * (height - 80);
-      particles.push({
-        type: index === 0 ? "solid" : index === 1 ? "liquid" : "gas",
-        x,
-        y,
-        baseX: x,
-        baseY: y,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        phase: Math.random() * Math.PI * 2
-      });
-    }
-  });
-
-  let temperature = Number(slider?.value || 2);
-  let lastTime = 0;
-
-  function drawBackground() {
-    sections.forEach((section) => {
-      ctx.fillStyle = `${section.color}22`;
-      ctx.fillRect(section.start, 0, section.end - section.start, height);
-      ctx.fillStyle = "#37474f";
-      ctx.font = "bold 14px Sans-Serif";
-      ctx.fillText(section.name, section.start + 12, 20);
-    });
-  }
-
-  function updateParticles(dt) {
-    const tempFactor = temperature / 3;
-    particles.forEach((p) => {
-      if (p.type === "solid") {
-        p.phase += dt * 0.005 * tempFactor;
-        p.x = p.baseX + Math.sin(p.phase) * 3 * tempFactor;
-        p.y = p.baseY + Math.cos(p.phase) * 3 * tempFactor;
-      } else {
-        const section = p.type === "liquid" ? sections[1] : sections[2];
-        const speed = p.type === "gas" ? 0.08 : 0.04;
-        p.x += p.vx * dt * (speed * temperature + 0.05);
-        p.y += p.vy * dt * (speed * temperature + 0.05);
-        const minX = section.start + 12;
-        const maxX = section.end - 12;
-        if (p.x < minX || p.x > maxX) {
-          p.vx *= -1;
-          p.x = Math.max(minX, Math.min(maxX, p.x));
-        }
-        const minY = 30;
-        const maxY = height - 30;
-        if (p.y < minY || p.y > maxY) {
-          p.vy *= -1;
-          p.y = Math.max(minY, Math.min(maxY, p.y));
-        }
+    const particles = [];
+    states.forEach((state) => {
+      for (let i = 0; i < 35; i++) {
+        const p = new THREE.Mesh(
+          new THREE.SphereGeometry(0.15, 10, 10),
+          new THREE.MeshStandardMaterial({ color: state.color, emissive: state.color, emissiveIntensity: 0.3 })
+        );
+        p.userData.state = state;
+        p.position.set(
+          state.center[0] + (Math.random() - 0.5) * state.spread,
+          0.3 + Math.random() * 0.5,
+          (Math.random() - 0.5) * state.spread
+        );
+        scene.add(p);
+        particles.push(p);
       }
     });
-  }
 
-  function draw() {
-    ctx.clearRect(0, 0, width, height);
-    drawBackground();
-    ctx.fillStyle = "#263238";
-    particles.forEach((p) => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
-
-  function loop(timestamp) {
-    if (!lastTime) {
-      lastTime = timestamp;
-    }
-    const dt = timestamp - lastTime;
-    lastTime = timestamp;
-    updateParticles(dt);
-    draw();
-    requestAnimationFrame(loop);
-  }
-
-  slider?.addEventListener("input", (event) => {
-    temperature = Number(event?.target?.value) || temperature;
-    if (valueEl) {
-      valueEl.textContent = `${temperature} 级`;
-    }
-    if (info) {
-      info.textContent =
-        temperature >= 4
-          ? "温度高时，液态和气态粒子更活跃，运动范围变大。"
-          : "温度低时，固态粒子几乎只在原位振动。";
-    }
-  });
-
-  if (valueEl) {
-    valueEl.textContent = `${temperature} 级`;
-  }
-  if (info) {
-    info.textContent = "拖动温度滑块，对比三种物态的运动。";
-  }
-  requestAnimationFrame(loop);
-}
-
-function initArithmeticStaircase() {
-  const a1Input = document.getElementById("arith-a1");
-  const dInput = document.getElementById("arith-d");
-  const nInput = document.getElementById("arith-n");
-  const bars = document.getElementById("arith-bars");
-  const sumEl = document.getElementById("arith-sum");
-  const nDisplay = document.getElementById("arith-n-display");
-  if (!a1Input || !dInput || !nInput || !bars) return;
-
-  function render() {
-    const a1 = Number(a1Input.value);
-    const d = Number(dInput.value);
-    const n = Number(nInput.value);
-    const terms = Array.from({ length: n }, (_, i) => a1 + i * d);
-    const maxAbs = Math.max(1, ...terms.map((t) => Math.abs(t)));
-    const sum = terms.reduce((acc, cur) => acc + cur, 0);
-
-    bars.innerHTML = "";
-    terms.forEach((value, index) => {
-      const bar = document.createElement("div");
-      bar.className = "stair-bar";
-      bar.dataset.value = value.toFixed(1).replace(/\.0$/, "");
-      bar.dataset.label = `a${index + 1}`;
-      bar.style.height = "0%";
-      bars.appendChild(bar);
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const heightPercent = Math.max(8, (Math.abs(value) / maxAbs) * 95);
-          bar.style.height = `${heightPercent}%`;
-          bar.classList.add("show-value");
-        }, index * 120);
+    updaters.push((delta, elapsed) => {
+      particles.forEach((p, idx) => {
+        const { spread, speed, center } = p.userData.state;
+        p.position.x += Math.sin(elapsed * speed + idx) * 0.005 * spread;
+        p.position.z += Math.cos(elapsed * speed + idx) * 0.005 * spread;
+        p.position.y = 0.3 + Math.sin(elapsed * (speed + 0.5) + idx) * 0.08 * spread;
       });
     });
+  });
+}
 
-    sumEl && (sumEl.textContent = sum.toFixed(1).replace(/\.0$/, ""));
-    nDisplay && (nDisplay.textContent = `${n}`);
-  }
 
-  [a1Input, dInput, nInput].forEach((input) => input?.addEventListener("input", render));
-  render();
+function initArithmeticStaircase() {
+  createPlaySpace("staircase-canvas", { cameraPos: [0, 8, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 24);
+
+    const steps = [];
+    for (let i = 0; i < 6; i++) {
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.6 + i * 0.2, 1.4),
+        new THREE.MeshStandardMaterial({ color: 0xffc107, transparent: true, opacity: 0.8 })
+      );
+      step.position.set(-5 + i * 2, 0.3 + i * 0.1, 0);
+      scene.add(step);
+      steps.push(step);
+    }
+
+    const token = new THREE.Mesh(
+      new THREE.SphereGeometry(0.5, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0x4fc3f7 })
+    );
+    token.position.set(-5, 2, 0);
+    scene.add(token);
+
+    updaters.push((delta, elapsed) => {
+      const pos = Math.min(steps.length - 1, Math.floor((elapsed * 0.5) % steps.length));
+      token.position.x = steps[pos].position.x;
+      token.position.y = steps[pos].position.y + 1.2;
+    });
+  });
 }
 
 function initCircleMeasures() {
   const slider = document.getElementById("circle-radius");
-  const canvas = document.getElementById("circle-canvas");
   const perimeterEl = document.getElementById("circle-perimeter");
   const areaEl = document.getElementById("circle-area");
-  if (!slider || !canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
-  let progress = 0;
-  let animId;
 
-  function draw(radius, progressValue) {
-    const scale = 8;
-    const r = radius * scale;
-    const center = { x: canvas.width / 2, y: canvas.height / 2 + 10 };
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  createPlaySpace("circle-canvas", { cameraPos: [0, 8, 14], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 20);
 
-    // area fill
-    ctx.beginPath();
-    ctx.moveTo(center.x, center.y);
-    ctx.fillStyle = "rgba(99, 102, 241, 0.25)";
-    ctx.arc(center.x, center.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progressValue);
-    ctx.closePath();
-    ctx.fill();
+    const disc = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.5, 3.5, 0.3, 64),
+      new THREE.MeshStandardMaterial({ color: 0xffe082, transparent: true, opacity: 0.8 })
+    );
+    disc.rotation.x = Math.PI / 2;
+    disc.position.y = 0.2;
+    scene.add(disc);
 
-    // outline
-    ctx.beginPath();
-    ctx.strokeStyle = "#3b82f6";
-    ctx.lineWidth = 4;
-    ctx.arc(center.x, center.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progressValue);
-    ctx.stroke();
+    const radiusBar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.15, 3.5),
+      new THREE.MeshStandardMaterial({ color: 0x42a5f5 })
+    );
+    radiusBar.position.set(0, 0.5, 1.75);
+    scene.add(radiusBar);
 
-    ctx.fillStyle = "#111827";
-    ctx.font = "bold 16px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(`r = ${radius} cm`, center.x, center.y + r + 24);
-  }
+    const diameter = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.15, 7),
+      new THREE.MeshStandardMaterial({ color: 0xef5350 })
+    );
+    diameter.position.set(0, 0.6, 0);
+    scene.add(diameter);
 
-  function updateText(radius) {
-    const perimeter = 2 * Math.PI * radius;
-    const area = Math.PI * radius * radius;
-    perimeterEl && (perimeterEl.textContent = perimeter.toFixed(2));
-    areaEl && (areaEl.textContent = area.toFixed(2));
-  }
+    function updateCircle(r) {
+      disc.geometry.dispose();
+      disc.geometry = new THREE.CylinderGeometry(r, r, 0.3, 64);
+      radiusBar.scale.z = r / 3.5;
+      radiusBar.position.z = r / 2;
+      diameter.scale.z = (r * 2) / 7;
+      if (perimeterEl) perimeterEl.textContent = (2 * Math.PI * r).toFixed(2);
+      if (areaEl) areaEl.textContent = (Math.PI * r * r).toFixed(2);
+    }
 
-  function animate() {
-    cancelAnimationFrame(animId);
-    progress = 0;
-    const radius = Number(slider.value);
-    updateText(radius);
-    const step = () => {
-      progress += 0.018;
-      if (progress > 1) progress = 1;
-      draw(radius, progress);
-      if (progress < 1) {
-        animId = requestAnimationFrame(step);
-      }
-    };
-    step();
-  }
+    slider?.addEventListener("input", (e) => {
+      updateCircle(Number(e?.target?.value || 3.5));
+    });
 
-  slider.addEventListener("input", animate);
-  animate();
+    updateCircle(Number(slider?.value || 3.5));
+    updaters.push(spin(disc, 0.4));
+  });
 }
 
 function initParallelogramRectangle() {
-  const baseInput = document.getElementById("para-base");
-  const heightInput = document.getElementById("para-height");
-  const leftPiece = document.querySelector(".para-piece-left");
-  const rightPiece = document.querySelector(".para-piece-right");
-  const shape = document.getElementById("para-shape");
-  const rect = document.getElementById("para-rect");
-  const playBtn = document.getElementById("para-play");
-  const areaEl = document.getElementById("para-area");
-  if (!baseInput || !heightInput || !leftPiece || !rightPiece || !shape || !rect) return;
+  createPlaySpace("parallelogram-canvas", { cameraPos: [0, 8, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 22);
 
-  let baseVal = Number(baseInput.value);
-  let heightVal = Number(heightInput.value);
-  let leftWidth = 60;
+    const rect = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 0.2, 5),
+      new THREE.MeshStandardMaterial({ color: 0x81c784, transparent: true, opacity: 0.7 })
+    );
+    rect.position.y = 0.2;
+    scene.add(rect);
 
-  function applySize() {
-    baseVal = Number(baseInput.value);
-    heightVal = Number(heightInput.value);
-    const widthPx = 30 + baseVal * 14;
-    const heightPx = 20 + heightVal * 14;
-    leftWidth = Math.max(40, widthPx * 0.3);
-    const rightWidth = Math.max(50, widthPx - leftWidth);
+    const para = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 0.2, 5),
+      new THREE.MeshStandardMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.7 })
+    );
+    para.position.set(0, 0.6, 0);
+    para.rotation.y = Math.PI / 12;
+    scene.add(para);
 
-    shape.style.width = `${widthPx}px`;
-    shape.style.height = `${heightPx}px`;
-    leftPiece.style.width = `${leftWidth}px`;
-    rightPiece.style.width = `${rightWidth}px`;
-    rightPiece.style.left = `${leftWidth}px`;
-    rect.style.height = `${heightPx}px`;
-    rect.style.width = `0px`;
-    rect.style.opacity = "0";
-    leftPiece.style.transform = "translateX(0)";
-
-    if (areaEl) {
-      areaEl.textContent = (baseVal * heightVal).toFixed(1).replace(/\.0$/, "");
-    }
-  }
-
-  function play() {
-    leftPiece.style.transform = `translateX(${Math.max(0, shape.clientWidth - leftWidth)}px)`;
-    setTimeout(() => {
-      rect.style.opacity = "1";
-      rect.style.width = `${shape.clientWidth}px`;
-    }, 220);
-  }
-
-  baseInput.addEventListener("input", applySize);
-  heightInput.addEventListener("input", applySize);
-  playBtn?.addEventListener("click", play);
-  applySize();
+    updaters.push((delta, elapsed) => {
+      para.rotation.y = Math.sin(elapsed * 0.5) * 0.4;
+    });
+  });
 }
 
 function initLightReflection() {
-  const slider = document.getElementById("light-angle");
-  const canvas = document.getElementById("light-canvas");
-  if (!slider || !canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
+  createPlaySpace("reflection-canvas", { cameraPos: [0, 8, 14], background: 0xe3f2fd }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 22);
 
-  function draw(angleDeg) {
-    const angleRad = (angleDeg * Math.PI) / 180;
-    const center = { x: canvas.width / 2, y: canvas.height * 0.65 };
-    const len = 140;
-    const normalVec = { x: 0, y: -1 };
-    const incVec = {
-      x: -Math.sin(angleRad) * len,
-      y: normalVec.y * Math.cos(angleRad) * len
-    };
-    const refVec = {
-      x: Math.sin(angleRad) * len,
-      y: normalVec.y * Math.cos(angleRad) * len
-    };
+    const mirror = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 4, 6),
+      new THREE.MeshStandardMaterial({ color: 0x90caf9, metalness: 0.9, roughness: 0.05 })
+    );
+    scene.add(mirror);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const beamIn = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 6, 8),
+      new THREE.MeshStandardMaterial({ color: 0xffa726, emissive: 0xffa726, emissiveIntensity: 0.8 })
+    );
+    beamIn.rotation.z = -Math.PI / 4;
+    beamIn.position.set(-3, 1.5, 0);
+    scene.add(beamIn);
 
-    // mirror
-    ctx.beginPath();
-    ctx.moveTo(center.x, 20);
-    ctx.lineTo(center.x, canvas.height - 20);
-    ctx.strokeStyle = "#64748b";
-    ctx.setLineDash([6, 6]);
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    const beamOut = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 6, 8),
+      new THREE.MeshStandardMaterial({ color: 0x29b6f6, emissive: 0x29b6f6, emissiveIntensity: 0.8 })
+    );
+    beamOut.rotation.z = Math.PI / 4;
+    beamOut.position.set(3, 1.5, 0);
+    scene.add(beamOut);
 
-    // normal
-    ctx.beginPath();
-    ctx.moveTo(center.x, center.y);
-    ctx.lineTo(center.x, center.y - len * 0.9);
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.8)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // incident ray
-    ctx.beginPath();
-    ctx.moveTo(center.x + incVec.x, center.y + incVec.y);
-    ctx.lineTo(center.x, center.y);
-    ctx.strokeStyle = "#3b82f6";
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    // reflected ray
-    ctx.beginPath();
-    ctx.moveTo(center.x, center.y);
-    ctx.lineTo(center.x + refVec.x, center.y + refVec.y);
-    ctx.strokeStyle = "#f97316";
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 14px sans-serif";
-    ctx.fillText(`入射角 ${angleDeg}°`, center.x - 120, center.y - 12);
-    ctx.fillText(`反射角 ${angleDeg}°`, center.x + 30, center.y - 12);
-  }
-
-  slider.addEventListener("input", (event) => {
-    const angle = Number(event?.target?.value) || 30;
-    draw(angle);
+    updaters.push(makePulse(beamIn, 0.05, 2));
+    updaters.push(makePulse(beamOut, 0.05, 2));
   });
-  draw(Number(slider.value));
 }
 
 function initBuoyancyTank() {
-  const slider = document.getElementById("buoy-density");
-  const block = document.getElementById("buoy-block");
-  const ratioEl = document.getElementById("buoy-ratio");
-  const tank = block?.parentElement;
-  if (!slider || !block || !tank) return;
+  const density = document.getElementById("buoy-density");
+  createPlaySpace("buoyancy-canvas", { cameraPos: [0, 8, 14], background: 0xe1f5fe }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
 
-  const waterDensity = 1.0;
-  const baseHeight = block.clientHeight || 80;
-
-  function update() {
-    const density = Number(slider.value);
-    const submergeRatio = Math.min(1, density / waterDensity);
-    const exposed = Math.max(0, 1 - submergeRatio);
-    const heightPx = baseHeight * (0.65 + 0.35 * submergeRatio);
-    block.style.height = `${heightPx}px`;
-
-    const waterTop = tank.clientHeight * 0.35;
-    const waterBottom = tank.clientHeight - 8;
-    const submergedHeight = heightPx * submergeRatio;
-    const topPosition = Math.min(
-      waterBottom - heightPx,
-      waterTop + submergedHeight - heightPx
+    const water = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x81d4fa, transparent: true, opacity: 0.4 })
     );
-    block.style.top = `${topPosition}px`;
+    water.position.y = 3;
+    scene.add(water);
 
-    if (ratioEl) {
-      ratioEl.textContent = `${Math.round(exposed * 100)}%`;
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 1.6, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0xffb74d })
+    );
+    cube.position.y = 5;
+    scene.add(cube);
+
+    function updateFloat() {
+      const rho = Number(density?.value || 0.8);
+      cube.position.y = 1 + 4 * (1 - rho / 1.5);
     }
-  }
 
-  slider.addEventListener("input", update);
-  update();
+    density?.addEventListener("input", updateFloat);
+    updaters.push((delta, elapsed) => {
+      cube.position.x = Math.sin(elapsed) * 0.8;
+    });
+    updateFloat();
+  });
 }
 
 function initSunShadow() {
-  const slider = document.getElementById("sun-angle");
-  const sun = document.getElementById("sun-dot");
-  const shadow = document.getElementById("shadow");
-  const shadowLengthEl = document.getElementById("shadow-length");
-  if (!slider || !sun || !shadow) return;
-
-  const poleHeightMeters = 4;
-  const pixelsPerMeter = 30;
-
-  function update(angleDeg) {
-    const angleRad = (angleDeg * Math.PI) / 180;
-    const lengthMeters = poleHeightMeters / Math.tan(angleRad);
-    const lengthPx = Math.min(320, Math.max(10, lengthMeters * pixelsPerMeter));
-    shadow.style.width = `${lengthPx}px`;
-    shadow.style.transform = `rotate(${Math.max(5, 90 - angleDeg)}deg)`;
-
-    const arcRadius = 120;
-    const center = { x: 120, y: 220 };
-    sun.style.left = `${center.x + arcRadius * Math.cos(angleRad)}px`;
-    sun.style.top = `${center.y - arcRadius * Math.sin(angleRad)}px`;
-
-    shadowLengthEl && (shadowLengthEl.textContent = lengthMeters.toFixed(2));
+  const sliderId = "shadow-angle";
+  let slider = document.getElementById(sliderId);
+  if (!slider) {
+    const wrap = document.createElement("div");
+    wrap.className = "control-row";
+    wrap.innerHTML = `<label>太阳高度</label><input id="${sliderId}" type="range" min="10" max="80" value="45">`;
+    (document.querySelector(".viz-card") || document.querySelector(".main-content"))?.appendChild(wrap);
+    slider = wrap.querySelector("input");
   }
 
-  slider.addEventListener("input", (event) => {
-    const value = Number(event?.target?.value) || 30;
-    update(value);
+  createPlaySpace("shadow-canvas", { cameraPos: [0, 9, 16], background: 0xfff8e1 }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene } = ctx;
+    addGroundPlane(ctx, 0xffffff, 24);
+
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.25, 5, 12),
+      new THREE.MeshStandardMaterial({ color: 0x795548 })
+    );
+    pole.position.y = 2.5;
+    scene.add(pole);
+
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 6),
+      new THREE.MeshStandardMaterial({ color: 0x757575, transparent: true, opacity: 0.4 })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.01;
+    scene.add(shadow);
+
+    function updateShadow() {
+      const angle = (Number(slider?.value || 45) * Math.PI) / 180;
+      const length = Math.max(0.5, 5 / Math.tan(angle));
+      shadow.scale.set(1.2, length, 1);
+      shadow.position.z = -length / 2;
+    }
+
+    updateShadow();
+    slider?.addEventListener("input", updateShadow);
   });
-  update(Number(slider.value));
 }
 
 function initEnergyPyramid() {
-  const slider = document.getElementById("energy-input");
-  const bars = {
-    producer: document.getElementById("energy-producer"),
-    primary: document.getElementById("energy-primary"),
-    secondary: document.getElementById("energy-secondary"),
-    tertiary: document.getElementById("energy-tertiary")
-  };
-  const values = {
-    producer: document.getElementById("energy-producer-value"),
-    primary: document.getElementById("energy-primary-value"),
-    secondary: document.getElementById("energy-secondary-value"),
-    tertiary: document.getElementById("energy-tertiary-value")
-  };
-  if (!slider) return;
+  createPlaySpace("energy-canvas", { cameraPos: [0, 9, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 24);
 
-  function update() {
-    const baseEnergy = Number(slider.value);
-    const energies = [baseEnergy, baseEnergy * 0.1, baseEnergy * 0.01, baseEnergy * 0.001];
-    const labels = ["producer", "primary", "secondary", "tertiary"];
-    labels.forEach((label, index) => {
-      const widthPercent = Math.max(4, (energies[index] / baseEnergy) * 100);
-      if (bars[label]) {
-        bars[label].style.width = `${widthPercent}%`;
-      }
-      if (values[label]) {
-        values[label].textContent = `${energies[index].toFixed(1)} kJ`;
-      }
+    const levels = [
+      { color: 0xffcc80, size: 10 },
+      { color: 0xa5d6a7, size: 8 },
+      { color: 0x81d4fa, size: 6 },
+      { color: 0xce93d8, size: 4 }
+    ];
+
+    levels.forEach((lvl, idx) => {
+      const layer = new THREE.Mesh(
+        new THREE.ConeGeometry(lvl.size / 2, 1.4, 4),
+        new THREE.MeshStandardMaterial({ color: lvl.color, transparent: true, opacity: 0.8 })
+      );
+      layer.rotation.y = Math.PI / 4;
+      layer.position.y = 0.7 + idx * 1.1;
+      scene.add(layer);
+      updaters.push(gentleBob(layer, layer.position.y, "y"));
     });
-  }
-
-  slider.addEventListener("input", update);
-  update();
+  });
 }
 
 function initEarthRotation() {
@@ -2549,7 +1367,6 @@ function initEarthRotation() {
   let angle = 0;
   let last = 0;
 
-  // 固定分界线倾角，模拟地轴倾斜
   terminator.style.transform = `translate(-50%, 0) rotate(${AXIS_TILT}deg)`;
 
   function loop(timestamp) {
@@ -2574,3 +1391,308 @@ function initEarthRotation() {
 
   requestAnimationFrame(loop);
 }
+
+function initArithmeticStairs() {
+  const firstInput = document.getElementById("arith-first");
+  const diffInput = document.getElementById("arith-diff");
+  const nInput = document.getElementById("arith-n");
+  const replay = document.getElementById("arith-replay") || getOrCreateButton("arith-replay", "重新生成", document.querySelector(".viz-card"));
+  const info = document.getElementById("arith-info");
+  const firstVal = document.getElementById("arith-first-value");
+  const diffVal = document.getElementById("arith-diff-value");
+
+  createPlaySpace("arith-chart", { cameraPos: [0, 7, 14] }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xfafafa, 22);
+
+    const steps = [];
+    for (let i = 0; i < 12; i++) {
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 0.6, 1.2),
+        new THREE.MeshStandardMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.8 })
+      );
+      scene.add(step);
+      steps.push(step);
+    }
+
+    const coin = new THREE.Mesh(
+      new THREE.TorusGeometry(0.4, 0.12, 12, 24),
+      new THREE.MeshStandardMaterial({ color: 0xffd54f })
+    );
+    coin.position.set(-6, 1, 0);
+    scene.add(coin);
+
+    function rebuild() {
+      const a1 = Number(firstInput?.value || 2);
+      const d = Number(diffInput?.value || 1);
+      const n = Math.min(steps.length, Math.max(1, Number(nInput?.value || 1)));
+      if (firstVal) firstVal.textContent = a1;
+      if (diffVal) diffVal.textContent = d;
+
+      steps.forEach((step, idx) => {
+        const an = a1 + idx * d;
+        const height = Math.max(0.4, 0.6 + an * 0.15);
+        step.scale.set(1, height, 1);
+        step.position.set(-6 + idx * 1.2, height / 2, 0);
+        step.material.color.setHex(idx + 1 === n ? 0xffb74d : 0x4fc3f7);
+      });
+
+      const target = steps[n - 1];
+      coin.position.x = target.position.x;
+      coin.position.y = target.position.y + 0.8;
+      if (info) info.textContent = `aₙ = ${a1} + (n-1)×${d}；第 ${n} 项 ≈ ${a1 + (n - 1) * d}`;
+    }
+
+    updaters.push((delta, elapsed) => {
+      const idx = Math.floor((elapsed * 0.8) % steps.length);
+      const step = steps[idx];
+      if (step) {
+        coin.position.x += (step.position.x - coin.position.x) * delta * 3;
+        coin.position.y += (step.position.y + 0.8 - coin.position.y) * delta * 3;
+      }
+    });
+
+    rebuild();
+    [firstInput, diffInput].forEach((el) => el?.addEventListener("input", rebuild));
+    nInput?.addEventListener("change", rebuild);
+    replay?.addEventListener("click", rebuild);
+  });
+}
+
+function initPercentDonut() {
+  const slider = document.getElementById("donut-progress");
+  const valueEl = document.getElementById("donut-value");
+  const infoEl = document.getElementById("donut-info");
+  const animateBtn = document.getElementById("donut-animate") || getOrCreateButton("donut-animate", "自动播放", document.querySelector(".viz-card"));
+
+  createPlaySpace("donut-canvas", { cameraPos: [0, 7, 12], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 18);
+
+    const donut = new THREE.Mesh(
+      new THREE.TorusGeometry(3, 0.8, 16, 120),
+      new THREE.MeshStandardMaterial({ color: 0x29b6f6, emissive: 0x29b6f6, emissiveIntensity: 0.6, transparent: true })
+    );
+    donut.rotation.x = Math.PI / 2;
+    scene.add(donut);
+
+    function applyProgress(pct) {
+      const angle = Math.max(0.05, (Math.PI * 2 * pct) / 100);
+      donut.geometry.dispose();
+      donut.geometry = new THREE.TorusGeometry(3, 0.8, 16, 120, angle);
+      if (valueEl) valueEl.textContent = `${pct}%`;
+      if (infoEl) infoEl.textContent = `${(pct / 100).toFixed(2)} = ${pct}/100`;
+    }
+
+    let auto = false;
+    let t = Number(slider?.value || 68) / 100;
+    applyProgress(t * 100);
+
+    updaters.push((delta) => {
+      if (auto) {
+        t += delta * 0.2;
+        if (t > 1) t = 0;
+        const pct = Math.round(t * 100);
+        applyProgress(pct);
+        if (slider) slider.value = String(pct);
+      }
+    });
+
+    slider?.addEventListener("input", (e) => {
+      const pct = Number(e?.target?.value || 0);
+      applyProgress(pct);
+    });
+
+    animateBtn?.addEventListener("click", () => {
+      auto = !auto;
+      if (animateBtn) animateBtn.textContent = auto ? "暂停播放" : "自动播放";
+    });
+  });
+}
+
+function initCoordinateTransform() {
+  const moveX = document.getElementById("move-x");
+  const moveY = document.getElementById("move-y");
+  const rotate = document.getElementById("rotate-angle");
+  const resetBtn = document.getElementById("transform-reset") || getOrCreateButton("transform-reset", "回到初始", document.querySelector(".viz-card"));
+  const info = document.getElementById("transform-info");
+  const moveXValue = document.getElementById("move-x-value");
+  const moveYValue = document.getElementById("move-y-value");
+  const rotateValue = document.getElementById("rotate-angle-value");
+
+  createPlaySpace("transform-canvas", { cameraPos: [0, 8, 14], showGrid: true }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+
+    const axes = new THREE.AxesHelper(6);
+    scene.add(axes);
+
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.4, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xff7043 })
+    );
+    cube.position.set(-4, 1, -4);
+    scene.add(cube);
+
+    function updateTransform() {
+      const tx = Number(moveX?.value || 0);
+      const ty = Number(moveY?.value || 0);
+      const ang = (Number(rotate?.value || 0) * Math.PI) / 180;
+      cube.position.set(tx, 1 + ty * 0.15, ty);
+      cube.rotation.y = ang;
+      if (moveXValue) moveXValue.textContent = tx;
+      if (moveYValue) moveYValue.textContent = ty;
+      if (rotateValue) rotateValue.textContent = `${Number(rotate?.value || 0)}°`;
+      if (info) info.textContent = `坐标：(${tx.toFixed(1)}, ${ty.toFixed(1)})，旋转 ${rotate?.value || 0}°`;
+    }
+
+    moveX?.addEventListener("input", updateTransform);
+    moveY?.addEventListener("input", updateTransform);
+    rotate?.addEventListener("input", updateTransform);
+    resetBtn?.addEventListener("click", () => {
+      if (moveX) moveX.value = "1";
+      if (moveY) moveY.value = "0";
+      if (rotate) rotate.value = "20";
+      updateTransform();
+    });
+
+    updateTransform();
+    updaters.push(makePulse(cube, 0.04, 2));
+  });
+}
+
+function initLineSlope() {
+  createPlaySpace("slope-canvas", { cameraPos: [0, 8, 14], showGrid: true }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    const line = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 0.2, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x7e57c2 })
+    );
+    line.position.y = 0.2;
+    scene.add(line);
+
+    const rider = new THREE.Mesh(
+      new THREE.SphereGeometry(0.6, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffb74d })
+    );
+    rider.position.set(-5, 1, 0);
+    scene.add(rider);
+
+    updaters.push((delta, elapsed) => {
+      const slope = Math.sin(elapsed * 0.5) * 0.5;
+      line.rotation.z = -slope;
+      rider.position.x = Math.sin(elapsed) * 4.5;
+      rider.position.y = 1 + slope * rider.position.x * 0.4;
+    });
+  });
+}
+
+function initBuoyancyDensity() {
+  createPlaySpace("density-canvas", { cameraPos: [0, 8, 14], background: 0xe3f2fd }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+
+    const water = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x90caf9, transparent: true, opacity: 0.5 })
+    );
+    water.position.y = 3;
+    scene.add(water);
+
+    const wood = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.4, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xa1887f })
+    );
+    wood.position.y = 5;
+    scene.add(wood);
+
+    const stone = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.4, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0x546e7a })
+    );
+    stone.position.y = 4;
+    stone.position.x = 2;
+    scene.add(stone);
+
+    updaters.push((delta, elapsed) => {
+      wood.position.y = 4 + Math.sin(elapsed) * 0.3;
+      stone.position.y = 2 + Math.sin(elapsed) * 0.1;
+    });
+  });
+}
+
+function initCircuitBrightness() {
+  createPlaySpace("brightness-canvas", { cameraPos: [0, 8, 14], showGrid: false }).then((ctx) => {
+    if (!ctx) return;
+    const { THREE, scene, updaters } = ctx;
+    addGroundPlane(ctx, 0xffffff, 22);
+
+    const battery = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 2.4, 1.2),
+      new THREE.MeshStandardMaterial({ color: 0xff8a65 })
+    );
+    battery.position.set(-4, 1.2, 0);
+    scene.add(battery);
+
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.8, 18, 18),
+      new THREE.MeshStandardMaterial({ color: 0xfff59d, emissive: 0xfff176, emissiveIntensity: 0.8 })
+    );
+    bulb.position.set(2, 1.2, 0);
+    scene.add(bulb);
+
+    let brightness = 0;
+    updaters.push((delta, elapsed) => {
+      brightness = 0.6 + Math.abs(Math.sin(elapsed * 1.5)) * 0.6;
+      bulb.material.emissiveIntensity = brightness;
+    });
+  });
+}
+
+const topicInits = {
+  "average-jump": initAverageJump,
+  "fractions-pizza": initFractionPizza,
+  "rectangle-area": initRectanglePlayground,
+  "lever-balance": initLeverSimulation,
+  "water-cycle": initWaterCycle,
+  "pythagoras": initPythagorasDemo,
+  "multiplication-arrays": initMultiplicationArrays,
+  "fraction-addition": initFractionAddition,
+  "time-conversion": initTimeConversion,
+  "magnet-experiment": initMagnetExperiment,
+  "plant-transpiration": initPlantTranspiration,
+  "triangle-angle-sum": initTriangleAngleSum,
+  "place-value-machine": initPlaceValueMachine,
+  "probability-spinner": initProbabilitySpinner,
+  "speed-distance": initSpeedDistance,
+  "symmetry-folding": initSymmetryFolding,
+  "planet-orbits": initPlanetOrbits,
+  "sound-waves": initSoundWaves,
+  "particle-states": initParticleStates,
+  "arithmetic-staircase": initArithmeticStaircase,
+  "circle-measures": initCircleMeasures,
+  "parallelogram-rectangle": initParallelogramRectangle,
+  "light-reflection": initLightReflection,
+  "buoyancy-tank": initBuoyancyTank,
+  "sun-shadow": initSunShadow,
+  "energy-pyramid": initEnergyPyramid,
+  "earth-rotation": initEarthRotation,
+  "arithmetic-stairs": initArithmeticStairs,
+  "percent-donut": initPercentDonut,
+  "coordinate-transform": initCoordinateTransform,
+  "line-slope": initLineSlope,
+  "buoyancy-density": initBuoyancyDensity,
+  "circuit-brightness": initCircuitBrightness
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const topic = document.body.dataset.topic;
+  const init = topicInits[topic];
+  if (typeof init === "function") {
+    init();
+  }
+});
+
