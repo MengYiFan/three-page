@@ -13,17 +13,19 @@
                 <a href="../index.html" class="back-link">← 返回题目列表</a>
             </nav>
             <h1>行星绕日公转</h1>
-            <p class="subtitle">用动画轨道理解“周期不同”的原因</p>
+            <p class="subtitle">小熊笨笨&小猫喵喵的星空教室 · 用3D看懂行星绕圈</p>
         </header>
 
         <main class="main-content">
             <section class="problem-section">
-                <h2>题目描述</h2>
+                <h2>题目描述（低年级友好）</h2>
                 <div class="explanation-content">
                     <p>
-                        水星绕太阳一圈只需 88 天，而地球需要 365 天。为什么不同行星的公转周期差异这么大？
-                        用下方的轨道动画观察它们的“半径”和“速度”。
+                        小熊笨笨把教室里的台灯想象成太阳，用泡沫球当行星放在转盘上。
+                        他发现：有的球转得快，有的球转得慢；有的离灯近，有的离灯远。
+                        他想知道——为什么它们绕一圈需要的时间不一样？
                     </p>
+                    <p class="explanation-tip">请按住下方3D场景拖拽视角，点击行星收集小知识，帮助笨笨和喵喵完成“星空记录卡”。</p>
                 </div>
             </section>
 
@@ -36,45 +38,68 @@
                     <p>
                         在同一个平面内，轨道越小，转动频率越高；轨道越大，完成一圈所需的路程更长，平均速度又较低，因此周期变长。
                     </p>
+                    <p class="explanation-tip">1-3年级学生可先记住：“靠近太阳的小行星跑得快，远离太阳的跑得慢”。</p>
                 </div>
             </section>
 
             <section class="answer-section">
-                <h2>示例分析</h2>
+                <h2>示例分析（故事化提示）</h2>
                 <div class="explanation-content">
                     <ol>
-                        <li>观察动画中水星、金星、地球、火星的轨道半径。</li>
-                        <li>注意它们绕太阳一周所需时间：水星最快，火星最慢。</li>
-                        <li>结合科学常识：距太阳越近，太阳引力越大，行星运动越快。</li>
+                        <li>小熊笨笨把手边的球排成一圈：离灯最近的（当水星），稍远的（金星）、再远一点的（地球）、最远的（火星）。</li>
+                        <li>他轻轻转动转盘，发现最靠近灯的球转得最快，最远的球转得最慢。</li>
+                        <li>老师补充：越靠近太阳的行星收到的“拉力”越大，所以跑得越快。</li>
                     </ol>
-                    <p class="answer-summary">因此行星公转周期与距离太阳的远近密切相关。</p>
+                    <p class="answer-summary">结论：行星公转周期与距离太阳的远近密切相关，越近越快，越远越慢。</p>
                 </div>
             </section>
 
             <section class="knowledge-section">
-                <h2>拓展练习</h2>
+                <h2>拓展练习（互动引导）</h2>
                 <div class="knowledge-content">
                     <ul>
-                        <li>找出木星、土星的公转周期，与地球比较。</li>
-                        <li>讨论：如果把地球移到火星轨道，地球上的一年会变成多少天？</li>
-                        <li>尝试画一张“比例轨道图”，标注各行星距离。</li>
+                        <li>拖动视角，让行星轨迹露出来，再点击每颗行星，听听它们的小秘密。</li>
+                        <li>把速度调慢再调快，观察“快跑圈”与“慢散步”各需要多久回到起点。</li>
+                        <li>想象：如果把地球移动到火星轨道，你的生日会不会等更久才到？</li>
+                        <li>把行星顺序写在本子上，与伙伴互问互答：谁最快？谁最慢？</li>
                     </ul>
                 </div>
             </section>
 
             <section class="viz-section">
-                <h2>动画演示：四大行星绕日公转</h2>
+                <h2>3D星空互动：帮笨笨记录行星速度</h2>
+                <p class="explanation-tip">
+                    玩法：按住场景拖拽视角 → 点击行星收集知识卡片 → 用滑杆调节快慢，感受“快跑”和“慢跑”的区别。
+                </p>
                 <div class="viz-card orbit-lab">
-                    <canvas id="orbit-canvas" width="420" height="420"></canvas>
-                    <div class="orbit-controls">
-                        <label>
-                            动画速度
-                            <input type="range" id="orbit-speed" min="0.5" max="2.5" step="0.1" value="1">
-                            <span id="orbit-speed-value">1.0 ×</span>
-                        </label>
-                        <button id="orbit-toggle" class="btn btn-small" type="button">暂停公转</button>
+                    <div class="orbit-3d-shell">
+                        <div class="orbit-3d-scene">
+                            <div id="orbit-3d" class="orbit-3d" role="presentation" aria-label="四颗行星绕太阳旋转的三维模型"></div>
+                            <div class="orbit-legend">
+                                <span>🖐️ 按住拖拽旋转视角</span>
+                                <span>👆 点击行星听提示</span>
+                            </div>
+                        </div>
+                        <div class="orbit-3d-panel">
+                            <div class="orbit-controls-grid">
+                                <label class="control">
+                                    <span>动画速度</span>
+                                    <input type="range" id="orbit3d-speed" min="0.5" max="2.5" step="0.1" value="1.0">
+                                    <small id="orbit3d-speed-value">1.0×</small>
+                                </label>
+                                <label class="control checkbox">
+                                    <input type="checkbox" id="orbit3d-trails" checked>
+                                    显示轨迹圈
+                                </label>
+                                <button id="orbit3d-toggle" class="btn btn-primary" type="button">暂停公转</button>
+                                <button id="orbit3d-theme" class="btn btn-secondary" type="button">切换星空/教室</button>
+                            </div>
+                            <div class="orbit-progress" id="orbit-progress" aria-live="polite">已收集 0/4 个行星小知识</div>
+                            <div class="orbit-story" id="orbit-story">
+                                小熊笨笨和小猫喵喵把台灯当太阳，泡沫球当行星。帮他们点击行星，听听谁跑得最快吧！
+                            </div>
+                        </div>
                     </div>
-                    <div id="orbit-info" class="orbit-info"></div>
                 </div>
             </section>
         </main>
@@ -85,6 +110,7 @@
         <p>——何思锐老师</p>
     </footer>
     </div>
-    <script src="../assets/js/topic-animations.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js" defer></script>
+    <script src="../assets/js/topic-animations.js" defer></script>
 </body>
 </html>
