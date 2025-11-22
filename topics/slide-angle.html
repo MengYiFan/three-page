@@ -24,19 +24,19 @@
 
             <!-- 难度与演示角度生成 -->
             <section class="difficulty-section">
-                <h2>选择滑滑梯情境并生成演示角度</h2>
+                <h2>选择预设滑滑梯角度并生成演示</h2>
                 <div class="difficulty-buttons">
                     <label class="form-label" for="difficulty-select">选择情境：</label>
                     <select id="difficulty-select" class="angle-select">
                         <option value="" selected>请选择一个滑梯情境</option>
-                        <option value="easy">低年级滑梯（较缓，约 18°～26°）</option>
-                        <option value="medium">中年级滑梯（适中，约 25°～35°）</option>
-                        <option value="hard">挑战型滑梯（偏陡，约 35°～50°）</option>
+                        <option value="easy">缓慢体验滑梯（固定 10°）</option>
+                        <option value="medium">中速体验滑梯（固定 40°）</option>
+                        <option value="hard">快速体验滑梯（固定 70°）</option>
                     </select>
                     <button id="generate-angle" class="new-problem-btn btn">生成新的滑梯角度演示</button>
                 </div>
                 <p class="angle-note mt-3 text-center text-blue-700 text-sm font-semibold">
-                    系统会根据选择的情境，自动生成一个滑滑梯倾斜角度，并用动画呈现滑梯的变化。
+                    三个核心演示角度已经固定为 10°、40°、70°，速度差异将被放大呈现，便于对比。
                 </p>
             </section>
 
@@ -70,8 +70,8 @@
                 <h2>试一试：输入你认为安全的滑梯角度</h2>
                 <div class="answer-input-group">
                     <input type="number" id="angle-input" class="angle-input"
-                           placeholder="请输入 5 - 60 之间的角度（单位：度）"
-                           min="0" max="90" step="1">
+                           placeholder="请输入 5 - 75 之间的角度（单位：度）"
+                           min="5" max="75" step="1">
                     <button id="submit-angle" class="btn">提交角度并查看安全等级</button>
                 </div>
                 <div id="angle-feedback" class="feedback"></div>

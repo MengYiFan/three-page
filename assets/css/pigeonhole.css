@@ -198,6 +198,7 @@ section h2 {
     gap: 15px;
     margin-bottom: 20px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .difficulty-btn {

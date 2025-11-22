@@ -5,6 +5,15 @@ const slideAngleState = {
   currentAngle: null
 };
 
+const PRESET_ANGLES = {
+  easy: 10,
+  medium: 40,
+  hard: 70
+};
+
+const SLIDE_MIN_ANGLE = 5;
+const SLIDE_MAX_ANGLE = 75;
+
 const angleElements = {};
 
 // Canvas 及动画相关
@@ -17,9 +26,9 @@ let slideAnimationFrameId = null;
 let lastFrameTime = 0;
 let childProgress = 0; // 0~1，表示小人在滑梯上的位置
 let isLoopingSlide = false;
-let currentVisualAngle = 25; // 当前用于渲染滑梯的角度
-const SLIDE_ANIMATION_MIN_DURATION = 900; // 毫秒，角度大时更快
-const SLIDE_ANIMATION_MAX_DURATION = 2400; // 毫秒，角度小时更慢
+let currentVisualAngle = PRESET_ANGLES.medium; // 当前用于渲染滑梯的角度
+const SLIDE_ANIMATION_MIN_DURATION = 700; // 毫秒，角度大时更快
+const SLIDE_ANIMATION_MAX_DURATION = 3400; // 毫秒，角度小时更慢且路程更长
 let slideAnimationDuration = SLIDE_ANIMATION_MAX_DURATION;
 const SAFETY_BADGE_BASE =
   "safety-badge inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-white shadow";
@@ -60,7 +69,7 @@ function initSlideAnglePage() {
   }
 
   // 初始静态展示一个适中角度的滑梯
-  drawSlideScene(25, 0);
+  drawSlideScene(currentVisualAngle, 0);
 }
 
 function setupSlideCanvasSize() {
@@ -155,15 +164,15 @@ function resetAngleDemo() {
   }
 
   stopSlideAnimationLoop();
-  currentVisualAngle = 25;
+  currentVisualAngle = PRESET_ANGLES.medium;
   childProgress = 0;
-  drawSlideScene(25, 0);
+  drawSlideScene(currentVisualAngle, 0);
 }
 
 function generateAngleDemo() {
   if (!slideAngleState.currentDifficulty) return;
 
-  const angle = createRandomAngle(slideAngleState.currentDifficulty);
+  const angle = createPresetAngle(slideAngleState.currentDifficulty);
   slideAngleState.currentAngle = angle;
 
   updateSlideVisual(angle);
@@ -175,29 +184,30 @@ function generateAngleDemo() {
   startSlideAnimationLoop(angle);
 }
 
-function createRandomAngle(level) {
+function createPresetAngle(level) {
   switch (level) {
     case "easy":
-      return randomInRange(18, 26); // 安全、偏缓
+      return PRESET_ANGLES.easy;
     case "medium":
-      return randomInRange(25, 35); // 常见安全范围
+      return PRESET_ANGLES.medium;
     case "hard":
-      return randomInRange(35, 50); // 较陡或偏危险
+      return PRESET_ANGLES.hard;
     default:
-      return randomInRange(20, 30);
+      return PRESET_ANGLES.medium;
   }
-}
-
-function randomInRange(min, max) {
-  return Math.round(min + Math.random() * (max - min));
 }
 
 function updateSlideVisual(angle) {
-  currentVisualAngle = angle;
-  drawSlideScene(angle, isLoopingSlide ? childProgress : 0);
+  const clamped = clampAngle(angle);
+  currentVisualAngle = clamped;
+  drawSlideScene(clamped, isLoopingSlide ? childProgress : 0);
   if (angleElements.currentAngleValue) {
-    angleElements.currentAngleValue.textContent = String(angle);
+    angleElements.currentAngleValue.textContent = String(clamped);
   }
+}
+
+function clampAngle(angle) {
+  return Math.max(SLIDE_MIN_ANGLE, Math.min(SLIDE_MAX_ANGLE, angle || 0));
 }
 
 const SAFETY_LEVELS = [
@@ -236,13 +246,13 @@ const SAFETY_LEVELS = [
 ];
 
 function classifyAngle(angle) {
-  if (angle <= 0 || angle > 80 || Number.isNaN(angle)) {
+  if (angle <= 0 || angle > SLIDE_MAX_ANGLE || Number.isNaN(angle)) {
     return {
       id: "invalid",
       label: "不合理角度",
       className: "bg-slate-400",
       summary:
-        "请输入 5° 到 60° 范围内的角度，便于讨论实际滑梯情况。",
+        "请输入 5° 到 75° 范围内的角度，便于讨论实际滑梯情况。",
       tip: "在现实生活中，滑梯不会完全水平（0°），也不会接近竖直（90°）。"
     };
   }
@@ -303,10 +313,11 @@ function handleAngleSubmit() {
 
 function startSlideAnimationLoop(angle) {
   if (!slideCtx) return;
-  currentVisualAngle = angle;
+  const clamped = clampAngle(angle);
+  currentVisualAngle = clamped;
   childProgress = 0;
   isLoopingSlide = true;
-  slideAnimationDuration = calculateSlideDuration(angle);
+  slideAnimationDuration = calculateSlideDuration(clamped);
   lastFrameTime = performance.now();
   if (!slideAnimationFrameId) {
     slideAnimationFrameId = requestAnimationFrame(handleSlideAnimationFrame);
@@ -338,11 +349,24 @@ function handleSlideAnimationFrame(timestamp) {
 }
 
 function calculateSlideDuration(angle) {
-  const clamped = Math.max(5, Math.min(60, angle || 0));
-  const normalized = (clamped - 5) / 55; // 0 表示最缓，1 表示最陡
-  return (
-    SLIDE_ANIMATION_MAX_DURATION -
-    normalized * (SLIDE_ANIMATION_MAX_DURATION - SLIDE_ANIMATION_MIN_DURATION)
+  const clamped = clampAngle(angle);
+  const geom = computeSlideGeometry(clamped, canvasWidth, canvasHeight);
+  const rad = (clamped * Math.PI) / 180;
+  const normalized =
+    (clamped - SLIDE_MIN_ANGLE) / (SLIDE_MAX_ANGLE - SLIDE_MIN_ANGLE);
+  const speedFactor = Math.sin(rad) + 0.18; // 避免过小的正弦值带来极慢速度
+  const lengthPerSpeed = geom.slideLength / Math.max(speedFactor, 0.12);
+  const scaledDuration = lengthPerSpeed * 4.5; // 让 10°、40°、70° 速度差更明显
+  const shallowBonus = (1 - normalized) * 280; // 缓坡再额外放慢
+
+  const duration =
+    scaledDuration +
+    shallowBonus +
+    (SLIDE_ANIMATION_MIN_DURATION * (0.4 + (1 - normalized) * 0.3));
+
+  return Math.max(
+    SLIDE_ANIMATION_MIN_DURATION,
+    Math.min(duration, SLIDE_ANIMATION_MAX_DURATION)
   );
 }
 
@@ -380,6 +404,9 @@ function drawSlideScene(angle, childT) {
   // 再画滑梯本体
   drawSlideBody(ctx, geom);
 
+  // 半透明角度示意叠加在滑梯起点
+  drawAngleOverlayOnSlide(ctx, geom);
+
   // 最后画小人
   drawSlideChild(ctx, geom, childT);
 }
@@ -392,6 +419,7 @@ function drawAngleIndicator(ctx, angleDeg, width, height) {
   const axisLength = size;
 
   ctx.save();
+  ctx.globalAlpha = 0.72;
 
   // 坐标轴：x 轴向右，y 轴向下（与 Canvas 坐标一致）
   ctx.strokeStyle = "#333";
@@ -409,7 +437,8 @@ function drawAngleIndicator(ctx, angleDeg, width, height) {
   ctx.fillText("y", originX - 10, originY + axisLength + 14);
 
   // 角度线与弧
-  const rad = (Math.max(0, Math.min(60, angleDeg)) * Math.PI) / 180;
+  const clampedAngle = clampAngle(angleDeg);
+  const rad = (clampedAngle * Math.PI) / 180;
   const radius = size * 0.85;
   const endX = originX + Math.cos(rad) * radius;
   const endY = originY + Math.sin(rad) * radius;
@@ -429,7 +458,7 @@ function drawAngleIndicator(ctx, angleDeg, width, height) {
 
   ctx.fillStyle = "#01579B";
   ctx.font = "12px Sans-Serif";
-  const label = `${Math.round(angleDeg)}°`;
+  const label = `${Math.round(clampedAngle)}°`;
   ctx.fillText(
     label,
     originX + Math.cos(rad / 2) * radius * 0.75 - 10,
@@ -443,40 +472,89 @@ function drawAngleIndicator(ctx, angleDeg, width, height) {
   ctx.restore();
 }
 
+function drawAngleOverlayOnSlide(ctx, geom) {
+  if (!geom) return;
+
+  const clamped = clampAngle(geom.angleDeg);
+  const rad = (clamped * Math.PI) / 180;
+  const { topX, topY, canvasWidth, canvasHeight } = geom;
+  const sizeBase = Math.min(canvasWidth || 320, canvasHeight || 240);
+  const radius =
+    sizeBase * (0.11 + ((clamped - SLIDE_MIN_ANGLE) / (SLIDE_MAX_ANGLE - SLIDE_MIN_ANGLE)) * 0.04);
+
+  ctx.save();
+  ctx.translate(topX, topY);
+  ctx.globalAlpha = 0.42;
+
+  ctx.strokeStyle = "#0B5AA9";
+  ctx.lineWidth = Math.max(1.2, radius * 0.025);
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(radius, 0);
+  ctx.stroke();
+
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(Math.cos(rad) * radius, Math.sin(rad) * radius);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(2, 86, 174, 0.65)";
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.92, 0, rad, false);
+  ctx.stroke();
+
+  ctx.fillStyle = "#0A3D73";
+  ctx.font = "bold 13px Sans-Serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    `${Math.round(clamped)}°`,
+    Math.cos(rad * 0.5) * radius * 0.95 - 12,
+    Math.sin(rad * 0.5) * radius * 0.95 - 6
+  );
+
+  ctx.restore();
+}
+
 // 计算滑梯的起点、终点及宽度等参数
 function computeSlideGeometry(angle, w, h) {
   const width = w || canvasWidth || 320;
   const height = h || canvasHeight || 240;
 
-  const clamped = Math.max(5, Math.min(60, angle || 0));
+  const clamped = clampAngle(angle);
   const rad = (clamped * Math.PI) / 180;
-  const normalized = Math.max(0, Math.min(1, (clamped - 5) / 55));
+  const normalized = Math.max(
+    0,
+    Math.min(1, (clamped - SLIDE_MIN_ANGLE) / (SLIDE_MAX_ANGLE - SLIDE_MIN_ANGLE))
+  );
 
-  const groundY = height * 0.68;
+  const groundY = height * 0.76;
 
-  // 塔在画面的左侧，滑梯向右下延伸
-  const topX = width * 0.32;
-  const topY = height * 0.28;
+  // 塔在画面的左侧，滑梯向右下延伸，角度越大塔越高且略往前
+  const topX = width * (0.22 + normalized * 0.06);
+  const topY = height * (0.24 - normalized * 0.1);
 
   // 底部始终落在地面附近，随着角度变化调整水平位置，角度越小越向右
   const bottomX = Math.max(
-    topX + width * 0.2,
-    width * (0.65 + (1 - normalized) * 0.2)
+    topX + width * 0.24,
+    width * (0.6 + (1 - normalized) * 0.26)
   );
   const bottomY = groundY;
 
-  const outerWidth = Math.min(width, height) * 0.16;
+  const outerWidth = Math.min(width, height) * 0.18;
   const innerWidth = outerWidth * 0.65;
 
   // 控制点：第一段服从角度方向，第二段在落地前略微抬起形成优雅曲线
-  const cp1Distance = width * (0.22 + (1 - normalized) * 0.08);
+  const cp1Distance = width * (0.3 + (1 - normalized) * 0.12);
   const cp1 = {
     x: topX + Math.cos(rad) * cp1Distance,
-    y: topY + Math.sin(rad) * cp1Distance + height * 0.02
+    y: topY + Math.sin(rad) * cp1Distance + height * 0.035
   };
   const cp2 = {
-    x: bottomX - width * (0.2 - 0.08 * normalized),
-    y: bottomY - height * (0.08 + 0.12 * normalized)
+    x: bottomX - width * (0.26 - 0.1 * normalized),
+    y: bottomY - height * (0.12 + 0.18 * normalized)
   };
 
   return {
@@ -499,7 +577,7 @@ function drawSlideTower(ctx, geom) {
   const { topX, topY, canvasWidth, canvasHeight, outerWidth } = geom;
   const w = canvasWidth || 320;
   const h = canvasHeight || 240;
-  const groundY = h * 0.68;
+  const groundY = geom.bottomY || h * 0.76;
 
   const columnRadius = Math.min(w, h) * 0.09;
   const columnWidth = columnRadius * 1.45;
