@@ -860,9 +860,18 @@ function drawSlideBody(ctx, geom) {
   // 底部圆形出口
   ctx.save();
   ctx.translate(bottomX, bottomY + outerWidth * 0.02);
+  const trayGradient = ctx.createLinearGradient(
+    -outerWidth * 0.9,
+    0,
+    outerWidth * 0.9,
+    0
+  );
+  trayGradient.addColorStop(0, "#2F7AC7");
+  trayGradient.addColorStop(0.5, "#1F63B5");
+  trayGradient.addColorStop(1, "#1958A6");
   ctx.beginPath();
-  ctx.ellipse(0, 0, outerWidth * 0.75, outerWidth * 0.32, 0, 0, Math.PI);
-  ctx.fillStyle = "#13519E";
+  ctx.ellipse(0, 0, outerWidth * 0.68, outerWidth * 0.28, 0, 0, Math.PI);
+  ctx.fillStyle = trayGradient;
   ctx.fill();
   ctx.restore();
 
