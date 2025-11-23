@@ -821,19 +821,6 @@ function drawSlideBody(ctx, geom) {
     innerWidth
   } = geom;
 
-  // 支撑阴影
-  ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
-  ctx.lineWidth = outerWidth * 0.35;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(topX - outerWidth * 0.15, topY + outerWidth * 0.65);
-  ctx.quadraticCurveTo(
-    (topX + bottomX) / 2,
-    (topY + bottomY) / 2 + outerWidth * 1.3,
-    bottomX + outerWidth * 0.4,
-    bottomY + outerWidth * 0.55
-  );
-  ctx.stroke();
 
   const sampleCount = 28;
   const samples = [];
@@ -918,18 +905,6 @@ function drawSlideBody(ctx, geom) {
   }
   ctx.stroke();
 
-  // 底部出口圆弧 (Integrated cap)
-  ctx.save();
-  const lastP = samples[samples.length - 1];
-  ctx.translate(lastP.x, lastP.y);
-  ctx.rotate(lastP.angle);
-
-  // Draw a cap at the end
-  ctx.fillStyle = "#1C62B4"; // Match body end color
-  ctx.beginPath();
-  ctx.ellipse(0, 0, outerWidth * 0.1, outerWidth * 0.55, 0, Math.PI / 2, Math.PI * 1.5);
-  ctx.fill();
-  ctx.restore();
 
   // 入口圆弧
   ctx.fillStyle = "#8DC9FF";
