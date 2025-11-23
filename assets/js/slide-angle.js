@@ -24,12 +24,8 @@ let canvasHeight = 0;
 
 let slideAnimationFrameId = null;
 let lastFrameTime = 0;
-let childProgress = 0; // 0~1，表示小人在滑梯上的位置
 let isLoopingSlide = false;
 let currentVisualAngle = PRESET_ANGLES.medium; // 当前用于渲染滑梯的角度
-const SLIDE_ANIMATION_MIN_DURATION = 700; // 毫秒，角度大时更快
-const SLIDE_ANIMATION_MAX_DURATION = 3400; // 毫秒，角度小时更慢且路程更长
-let slideAnimationDuration = SLIDE_ANIMATION_MAX_DURATION;
 const SAFETY_BADGE_BASE =
   "safety-badge inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-white shadow";
 
@@ -59,7 +55,7 @@ function initSlideAnglePage() {
     window.addEventListener("resize", () => {
       setupSlideCanvasSize();
       // 尺寸变化后重新绘制当前状态
-      drawSlideScene(currentVisualAngle, isLoopingSlide ? childProgress : 0);
+      drawSlideScene(currentVisualAngle, isLoopingSlide ? physicsState.t : 0, isLoopingSlide ? physicsState.velocity : 0);
     });
   }
 
@@ -165,7 +161,8 @@ function resetAngleDemo() {
 
   stopSlideAnimationLoop();
   currentVisualAngle = PRESET_ANGLES.medium;
-  childProgress = 0;
+  physicsState.t = 0;
+  physicsState.velocity = 0;
   drawSlideScene(currentVisualAngle, 0);
 }
 
@@ -200,7 +197,7 @@ function createPresetAngle(level) {
 function updateSlideVisual(angle) {
   const clamped = clampAngle(angle);
   currentVisualAngle = clamped;
-  drawSlideScene(clamped, isLoopingSlide ? childProgress : 0);
+  drawSlideScene(clamped, isLoopingSlide ? physicsState.t : 0, isLoopingSlide ? physicsState.velocity : 0);
   if (angleElements.currentAngleValue) {
     angleElements.currentAngleValue.textContent = String(clamped);
   }
@@ -311,13 +308,30 @@ function handleAngleSubmit() {
 
 // ===== Canvas 动画：小人沿滑梯从上滑到底，并循环 =====
 
+// Physics constants
+// Physics constants
+const GRAVITY_PIXELS = 2500; // px/s^2, roughly tuned for canvas scale
+const FRICTION_COEF = 0.12; // Lower friction to allow sliding at low angles
+const DRAG_COEF = 0.0015; // Air resistance to limit max speed at high angles
+const TIME_STEP_MAX = 0.05; // Cap dt to avoid explosion on lag
+
+let physicsState = {
+  t: 0,
+  velocity: 0, // px/s
+  isSliding: false
+};
+
 function startSlideAnimationLoop(angle) {
   if (!slideCtx) return;
   const clamped = clampAngle(angle);
   currentVisualAngle = clamped;
-  childProgress = 0;
+
+  // Reset physics
+  physicsState.t = 0;
+  physicsState.velocity = 0;
+  physicsState.isSliding = true;
   isLoopingSlide = true;
-  slideAnimationDuration = calculateSlideDuration(clamped);
+
   lastFrameTime = performance.now();
   if (!slideAnimationFrameId) {
     slideAnimationFrameId = requestAnimationFrame(handleSlideAnimationFrame);
@@ -326,52 +340,96 @@ function startSlideAnimationLoop(angle) {
 
 function stopSlideAnimationLoop() {
   isLoopingSlide = false;
+  physicsState.isSliding = false;
 }
 
 function handleSlideAnimationFrame(timestamp) {
   if (!slideCtx) return;
 
-  const dt = timestamp - lastFrameTime;
+  let dt = (timestamp - lastFrameTime) / 1000; // seconds
   lastFrameTime = timestamp;
 
-  if (isLoopingSlide) {
-    const delta = dt / slideAnimationDuration;
-    childProgress += delta;
-    if (childProgress >= 1) {
-      // 到达底部后，从顶部重新开始
-      childProgress -= 1;
-    }
+  // Cap dt for safety
+  if (dt > TIME_STEP_MAX) dt = TIME_STEP_MAX;
+
+  if (isLoopingSlide && physicsState.isSliding) {
+    updatePhysics(dt);
   }
 
-  drawSlideScene(currentVisualAngle, childProgress);
+  drawSlideScene(currentVisualAngle, physicsState.t, physicsState.velocity);
 
   slideAnimationFrameId = requestAnimationFrame(handleSlideAnimationFrame);
 }
 
-function calculateSlideDuration(angle) {
-  const clamped = clampAngle(angle);
-  const geom = computeSlideGeometry(clamped, canvasWidth, canvasHeight);
-  const rad = (clamped * Math.PI) / 180;
-  const normalized =
-    (clamped - SLIDE_MIN_ANGLE) / (SLIDE_MAX_ANGLE - SLIDE_MIN_ANGLE);
-  const speedFactor = Math.sin(rad) + 0.18; // 避免过小的正弦值带来极慢速度
-  const lengthPerSpeed = geom.slideLength / Math.max(speedFactor, 0.12);
-  const scaledDuration = lengthPerSpeed * 4.5; // 让 10°、40°、70° 速度差更明显
-  const shallowBonus = (1 - normalized) * 280; // 缓坡再额外放慢
+function updatePhysics(dt) {
+  const geom = computeSlideGeometry(currentVisualAngle, canvasWidth, canvasHeight);
 
-  const duration =
-    scaledDuration +
-    shallowBonus +
-    (SLIDE_ANIMATION_MIN_DURATION * (0.4 + (1 - normalized) * 0.3));
+  // 1. Get current slope angle and derivative magnitude at t
+  // We need the actual slope angle relative to horizontal to calculate gravity component.
+  // evaluateSlidePath returns 'angle' which is the tangent angle (0 is horizontal right, positive is down).
+  const { angle: slopeAngle, dx, dy } = evaluateSlidePath(geom, physicsState.t);
 
-  return Math.max(
-    SLIDE_ANIMATION_MIN_DURATION,
-    Math.min(duration, SLIDE_ANIMATION_MAX_DURATION)
-  );
+  // ds_dt (pixels per unit t) = sqrt(dx^2 + dy^2)
+  // This tells us how many pixels we move for a small change in t.
+  const ds_dt = Math.hypot(dx, dy);
+
+  // 2. Calculate Forces
+  // Gravity component along the slide: g * sin(theta)
+  // Friction component: mu * g * cos(theta)
+  // Note: slopeAngle is in radians. 
+  // For a slide going down-right, angle is positive (0 to PI/2).
+  // Gravity accelerates down the slope.
+
+  const gravityAccel = GRAVITY_PIXELS * Math.sin(slopeAngle);
+  const normalForce = GRAVITY_PIXELS * Math.cos(slopeAngle);
+  const frictionAccel = FRICTION_COEF * normalForce;
+  const dragAccel = DRAG_COEF * physicsState.velocity * Math.abs(physicsState.velocity); // Drag opposes velocity
+
+  // Net acceleration
+  // If velocity is 0 and gravity < friction, it won't start (static friction), 
+  // but here we simplify to dynamic friction.
+  // We only apply friction opposing motion.
+  let netAccel = gravityAccel - frictionAccel - dragAccel;
+
+  // If slope is too shallow, netAccel might be negative. 
+  // If we are moving, friction opposes velocity. 
+  // If we are stopped, we only start if gravity > static friction.
+  // Simplified:
+  if (physicsState.velocity > 0) {
+    // Standard case
+  } else if (physicsState.velocity === 0) {
+    // Static case: if gravity < friction, stay at 0
+    if (gravityAccel <= frictionAccel) {
+      netAccel = 0;
+    }
+  }
+
+  // 3. Update Velocity
+  physicsState.velocity += netAccel * dt;
+
+  // Prevent negative velocity (sliding back up) for this simple demo
+  if (physicsState.velocity < 0) physicsState.velocity = 0;
+
+  // 4. Update Position (t)
+  // v = ds/time = (ds/dt) * (dt/time) -> wait, v = ds/time.
+  // we want change in t: delta_t = (v * delta_time) / (ds/dt)
+  if (ds_dt > 0.001) {
+    const delta_t = (physicsState.velocity * dt) / ds_dt;
+    physicsState.t += delta_t;
+  }
+
+  // 5. Loop Check
+  if (physicsState.t >= 1) {
+    // Reset to top
+    physicsState.t = 0;
+    physicsState.velocity = 0;
+    // Optional: Add a small pause at top? 
+    // For now, instant loop.
+  }
 }
 
 // 根据当前角度和进度绘制滑梯和人物
-function drawSlideScene(angle, childT) {
+function drawSlideScene(angle, childT, velocity = 0) {
   if (!slideCtx) return;
 
   const ctx = slideCtx;
@@ -406,6 +464,9 @@ function drawSlideScene(angle, childT) {
 
   // 半透明角度示意叠加在滑梯起点
   drawAngleOverlayOnSlide(ctx, geom);
+
+  // 画速度线
+  drawSpeedLines(ctx, geom, childT, velocity);
 
   // 最后画小人
   drawSlideChild(ctx, geom, childT);
@@ -857,21 +918,16 @@ function drawSlideBody(ctx, geom) {
   }
   ctx.stroke();
 
-  // 底部圆形出口
+  // 底部出口圆弧 (Integrated cap)
   ctx.save();
-  ctx.translate(bottomX, bottomY + outerWidth * 0.02);
-  const trayGradient = ctx.createLinearGradient(
-    -outerWidth * 0.9,
-    0,
-    outerWidth * 0.9,
-    0
-  );
-  trayGradient.addColorStop(0, "#2F7AC7");
-  trayGradient.addColorStop(0.5, "#1F63B5");
-  trayGradient.addColorStop(1, "#1958A6");
+  const lastP = samples[samples.length - 1];
+  ctx.translate(lastP.x, lastP.y);
+  ctx.rotate(lastP.angle);
+
+  // Draw a cap at the end
+  ctx.fillStyle = "#1C62B4"; // Match body end color
   ctx.beginPath();
-  ctx.ellipse(0, 0, outerWidth * 0.68, outerWidth * 0.28, 0, 0, Math.PI);
-  ctx.fillStyle = trayGradient;
+  ctx.ellipse(0, 0, outerWidth * 0.1, outerWidth * 0.55, 0, Math.PI / 2, Math.PI * 1.5);
   ctx.fill();
   ctx.restore();
 
@@ -1061,8 +1117,39 @@ function evaluateSlidePath(geom, t) {
   return {
     x,
     y,
+    dx,
+    dy,
     angle: Math.atan2(dy, dx)
   };
+}
+
+function drawSpeedLines(ctx, geom, t, velocity) {
+  if (velocity < 300) return; // Only draw if fast enough
+
+  const { x, y, angle } = evaluateSlidePath(geom, t);
+  const scale = Math.max(0.55, Math.min(1.15, (geom.outerWidth || 45) / 65));
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+
+  const lineCount = Math.min(5, Math.floor(velocity / 200));
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+  ctx.lineWidth = 2 * scale;
+  ctx.lineCap = "round";
+
+  for (let i = 0; i < lineCount; i++) {
+    const offsetX = - (20 + Math.random() * 30) * scale;
+    const offsetY = (Math.random() - 0.5) * 30 * scale;
+    const length = (10 + Math.random() * 20) * scale * (velocity / 800);
+
+    ctx.beginPath();
+    ctx.moveTo(offsetX, offsetY);
+    ctx.lineTo(offsetX - length, offsetY);
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 function cubicAt(p0, p1, p2, p3, t) {
