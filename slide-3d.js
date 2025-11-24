@@ -734,7 +734,7 @@ function assessSafety(angle) {
 
   if (angle <= 10) {
     level = { label: "过缓", class: "bg-sky-500", summary: "因为摩擦力原因，无法滑动。" };
-  } else if (angle <= 35) {
+  } else if (angle <= 40) {
     level = { label: "安全适中", class: "bg-emerald-500", summary: "适合儿童玩耍的安全角度。" };
   } else if (angle <= 50) {
     level = { label: "偏陡", class: "bg-amber-500", summary: "速度较快，需注意安全。" };
