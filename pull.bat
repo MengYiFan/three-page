@@ -1,5 +1,5 @@
 @echo off
-chcp 65001 >nul 2>&1  :: 切换为UTF-8编码（兼容更多环境）
+chcp 936>nul 2>&1
 cd /d "%~dp0"
 cls
 
@@ -14,10 +14,10 @@ echo.
 
 echo 正在拉取远程代码（origin/main）...
 echo ----------------------------------------------
-git pull origin main  :: 直接指定远程和分支，避免跟踪问题
+git pull origin main
 echo ----------------------------------------------
 echo.
 
-echo 操作完成！8秒后自动关闭窗口（按Ctrl+C可取消关闭）...
-timeout /t 8 /nobreak >nul
+echo 操作完成！5秒后自动关闭窗口（按Ctrl+C可取消关闭）...
+timeout /t 5 /nobreak >nul
 exit
