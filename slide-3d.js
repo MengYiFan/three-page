@@ -6,9 +6,9 @@ const slideState = {
   t: 0, // Progress along the path (0 to 1)
   velocity: 0,
   slideLength: 15, // Unified slope length (meters/units)
-  gravity: 100, // High base gravity, scaled down by angle factor
-  frictionCoef: 0.05, // Low friction to allow 5 degree sliding
-  dragCoef: 0.001
+  gravity: 100, // High gravity for dangerous speed at steep angles
+  frictionCoef: 0.15, // Base friction (allows sliding at > 10 degrees)
+  dragCoef: 0.01
 };
 
 const PRESET_ANGLES = {
@@ -455,45 +455,103 @@ function createCharacter() {
   if (characterGroup) scene.remove(characterGroup);
   characterGroup = new THREE.Group();
 
-  // Simple Kid: Sphere Head, Cylinder Body, Sphere Limbs
-  const matSkin = new THREE.MeshStandardMaterial({ color: 0xffe0b2 });
-  const matShirt = new THREE.MeshStandardMaterial({ color: 0xff5722 });
-  const matPants = new THREE.MeshStandardMaterial({ color: 0x3f51b5 });
+  // Materials
+  const matWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+  const matVisor = new THREE.MeshStandardMaterial({
+    color: 0x6a1b9a,
+    roughness: 0.2,
+    metalness: 0.8,
+    transparent: true,
+    opacity: 0.3
+  });
+  const matSkin = new THREE.MeshStandardMaterial({ color: 0xffccbc }); // Pinkish skin
+  const matDetail = new THREE.MeshStandardMaterial({ color: 0xff5252 }); // Red detail
+  const matBlack = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), matSkin);
-  head.position.y = 1.4;
-  characterGroup.add(head);
+  // 1. Helmet (Head)
+  const helmetGeo = new THREE.SphereGeometry(0.4, 32, 32);
+  const helmet = new THREE.Mesh(helmetGeo, matWhite);
+  helmet.position.y = 1.3;
+  characterGroup.add(helmet);
 
-  // Body
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 16), matShirt);
-  body.position.y = 0.9;
+  // Visor (Glass)
+  const visorGeo = new THREE.SphereGeometry(0.32, 32, 32);
+  const visor = new THREE.Mesh(visorGeo, matVisor);
+  visor.position.set(0, 1.3, 0.12); // Slightly forward
+  characterGroup.add(visor);
+
+  // Face (Inside)
+  const faceGeo = new THREE.SphereGeometry(0.28, 32, 32);
+  const face = new THREE.Mesh(faceGeo, matSkin);
+  face.position.set(0, 1.3, 0.05);
+  characterGroup.add(face);
+
+  // Eyes
+  const eyeGeo = new THREE.SphereGeometry(0.04, 16, 16);
+  const eyeL = new THREE.Mesh(eyeGeo, matBlack);
+  eyeL.position.set(-0.1, 1.35, 0.30);
+  characterGroup.add(eyeL);
+
+  const eyeR = new THREE.Mesh(eyeGeo, matBlack);
+  eyeR.position.set(0.1, 1.35, 0.30);
+  characterGroup.add(eyeR);
+
+  // 2. Body (Suit)
+  const bodyGeo = new THREE.CylinderGeometry(0.3, 0.35, 0.6, 16);
+  const body = new THREE.Mesh(bodyGeo, matWhite);
+  body.position.y = 0.8;
   characterGroup.add(body);
 
-  // Legs (Sitting pose)
-  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.5), matPants);
-  legL.rotation.x = -Math.PI / 2; // Legs forward
-  legL.position.set(-0.15, 0.6, 0.3);
+  // Backpack
+  const backpackGeo = new THREE.BoxGeometry(0.5, 0.6, 0.3);
+  const backpack = new THREE.Mesh(backpackGeo, matWhite);
+  backpack.position.set(0, 0.9, -0.3);
+  characterGroup.add(backpack);
+
+  // Chest Detail (Red Box)
+  const chestGeo = new THREE.BoxGeometry(0.2, 0.15, 0.05);
+  const chest = new THREE.Mesh(chestGeo, matDetail);
+  chest.position.set(0, 0.8, 0.3);
+  characterGroup.add(chest);
+
+  // 3. Legs (Sitting)
+  const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.4, 12);
+  const legL = new THREE.Mesh(legGeo, matWhite);
+  legL.rotation.x = -Math.PI / 2; // Forward
+  legL.position.set(-0.2, 0.5, 0.3);
   characterGroup.add(legL);
 
-  const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.5), matPants);
+  const legR = new THREE.Mesh(legGeo, matWhite);
   legR.rotation.x = -Math.PI / 2;
-  legR.position.set(0.15, 0.6, 0.3);
+  legR.position.set(0.2, 0.5, 0.3);
   characterGroup.add(legR);
 
-  // Arms
-  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5), matShirt);
+  // Feet/Boots
+  const bootGeo = new THREE.SphereGeometry(0.14, 16, 16);
+  const bootL = new THREE.Mesh(bootGeo, matWhite);
+  bootL.position.set(-0.2, 0.5, 0.55);
+  bootL.scale.set(1, 0.8, 1.2);
+  characterGroup.add(bootL);
+
+  const bootR = new THREE.Mesh(bootGeo, matWhite);
+  bootR.position.set(0.2, 0.5, 0.55);
+  bootR.scale.set(1, 0.8, 1.2);
+  characterGroup.add(bootR);
+
+  // 4. Arms
+  const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.45, 12);
+  const armL = new THREE.Mesh(armGeo, matWhite);
   armL.rotation.z = Math.PI / 4;
-  armL.position.set(-0.35, 1.0, 0);
+  armL.position.set(-0.4, 1.0, 0);
   characterGroup.add(armL);
 
-  const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5), matShirt);
+  const armR = new THREE.Mesh(armGeo, matWhite);
   armR.rotation.z = -Math.PI / 4;
-  armR.position.set(0.35, 1.0, 0);
+  armR.position.set(0.4, 1.0, 0);
   characterGroup.add(armR);
 
   // Scale down to fit slide
-  characterGroup.scale.set(0.8, 0.8, 0.8);
+  characterGroup.scale.set(1.2, 1.2, 1.2);
 
   scene.add(characterGroup);
   resetCharacter();
@@ -513,11 +571,11 @@ function updateCharacterPosition() {
   const tangent = slidePathCurve.getTangentAt(slideState.t);
 
   characterGroup.position.copy(point);
-  // Character's lowest point (legs) is at local y=0.5 * 0.8 = 0.4.
+  // Character's lowest point (legs) is at local y=0.5 * 1.2 = 0.6.
   // Slide surface is at y=0.
-  // So we need to lower the character by ~0.4 to sit on the slide.
-  // Let's lower by 0.38 to leave a tiny gap (0.02) to avoid Z-fighting/clipping.
-  characterGroup.position.y -= 0.38;
+  // So we need to lower the character by ~0.6 to sit on the slide.
+  // Let's lower by 0.58 to leave a tiny gap (or slight embed) to avoid Z-fighting/clipping.
+  characterGroup.position.y -= 0.58;
 
   // Orient character to face down the slide
   // Tangent is the forward vector.
@@ -563,11 +621,9 @@ function animate(time) {
 
     let accel = gravityForce - frictionForce;
 
-    // Scale acceleration by angle to exaggerate speed differences
-    // This allows low angles (5-10) to slide (due to low friction) but be very slow
-    // And high angles (70) to be much faster than medium angles (40)
-    const angleFactor = slideState.currentAngle / 90;
-    accel *= angleFactor;
+    // Remove artificial angle scaling to restore Newtonian physics
+    // const angleFactor = slideState.currentAngle / 90;
+    // accel *= angleFactor;
 
     // Drag
     accel -= slideState.dragCoef * slideState.velocity * slideState.velocity;
@@ -656,6 +712,13 @@ function setAngle(angle) {
   updateSlideGeometry(angle);
   resetCharacter();
 
+  // Dynamic Friction: Explicitly prevent sliding for <= 10 degrees
+  if (angle <= 10) {
+    slideState.frictionCoef = 1.0; // High friction, won't move
+  } else {
+    slideState.frictionCoef = 0.15; // Low friction, ensures sliding at 15 degrees
+  }
+
   // Update Safety Badge (Preview)
   assessSafety(angle);
 }
@@ -669,14 +732,14 @@ function startSlide() {
 function assessSafety(angle) {
   let level = { label: "未知", class: "bg-slate-400", summary: "" };
 
-  if (angle < 15) {
-    level = { label: "过缓", class: "bg-sky-500", summary: "滑梯太缓，滑不动。" };
+  if (angle <= 10) {
+    level = { label: "过缓", class: "bg-sky-500", summary: "因为摩擦力原因，无法滑动。" };
   } else if (angle <= 35) {
     level = { label: "安全适中", class: "bg-emerald-500", summary: "适合儿童玩耍的安全角度。" };
-  } else if (angle <= 40) {
+  } else if (angle <= 50) {
     level = { label: "偏陡", class: "bg-amber-500", summary: "速度较快，需注意安全。" };
   } else {
-    level = { label: "危险", class: "bg-rose-500", summary: "角度过大，极易发生危险！" };
+    level = { label: "危险", class: "bg-rose-500", summary: "滑动速度很快，很危险。" };
   }
 
   dom.safetyBadge.textContent = level.label;
