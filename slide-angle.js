@@ -451,7 +451,7 @@ function drawSlideScene(angle, childT, velocity = 0) {
   ctx.fillStyle = groundGradient;
   ctx.fillRect(0, h * 0.7, w, h * 0.3);
 
-  drawAngleIndicator(ctx, angle, w, h);
+
 
   // 计算滑梯几何信息
   const geom = computeSlideGeometry(angle, w, h);
@@ -538,42 +538,79 @@ function drawAngleOverlayOnSlide(ctx, geom) {
 
   const clamped = clampAngle(geom.angleDeg);
   const rad = (clamped * Math.PI) / 180;
-  const { topX, topY, canvasWidth, canvasHeight } = geom;
+  const { topX, topY, bottomX, bottomY, outerWidth, canvasWidth, canvasHeight } = geom;
   const sizeBase = Math.min(canvasWidth || 320, canvasHeight || 240);
+  // Increase radius for longer lines
   const radius =
-    sizeBase * (0.11 + ((clamped - SLIDE_MIN_ANGLE) / (SLIDE_MAX_ANGLE - SLIDE_MIN_ANGLE)) * 0.04);
+    sizeBase * (0.25 + ((clamped - SLIDE_MIN_ANGLE) / (SLIDE_MAX_ANGLE - SLIDE_MIN_ANGLE)) * 0.05);
 
   ctx.save();
-  ctx.translate(topX, topY);
-  ctx.globalAlpha = 0.42;
+  // Move to bottom edge of the slide (assuming path is center, so + half width)
+  // And move left to avoid blocking the slide end
+  ctx.translate(bottomX - outerWidth * 0.8, bottomY + outerWidth * 0.5);
+  ctx.globalAlpha = 0.8; // Make it more visible
+
+  ctx.strokeStyle = "#FF3D00"; // Use a reddish color as requested/implied by "red part"? Or stick to blue but match style?
+  // User said "reference image red part", implying the POSITION and STYLE.
+  // I will stick to the blue theme but make it prominent, or maybe use a high contrast color if needed.
+  // The user's red drawing is an annotation. The original UI was blue.
+  // I'll stick to the existing blue theme but make lines longer and position correct.
+  // Actually, the user said "visible reference image red part" (可见参考图红色部分).
+  // This might mean "make it look like the red part".
+  // But usually we keep the app's theme. I will use the blue theme but ensure the geometry matches the red lines.
+  // I'll stick to the existing blue theme but ensure the geometry matches the red lines.
 
   ctx.strokeStyle = "#0B5AA9";
-  ctx.lineWidth = Math.max(1.2, radius * 0.025);
+  ctx.lineWidth = Math.max(2, radius * 0.03);
   ctx.setLineDash([6, 6]);
+
+  // Horizontal Line (X axis) - Left
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(radius, 0);
+  ctx.lineTo(-radius, 0);
+  ctx.stroke();
+
+  // Vertical Line (Y axis) - Up
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, -radius);
   ctx.stroke();
 
   ctx.setLineDash([]);
+
+  // Slide Line (Up-Left)
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(Math.cos(rad) * radius, Math.sin(rad) * radius);
+  ctx.lineTo(-Math.cos(rad) * radius, -Math.sin(rad) * radius);
   ctx.stroke();
 
+  // Arc from Horizontal (X) to Slide
+  // Horizontal is PI (Left)
+  // Slide is PI + rad (Up-Left)
+  // We want the arc between Horizontal and Slide
   ctx.strokeStyle = "rgba(2, 86, 174, 0.65)";
   ctx.beginPath();
-  ctx.arc(0, 0, radius * 0.92, 0, rad, false);
+  ctx.arc(0, 0, radius * 0.92, Math.PI, Math.PI + rad, false);
   ctx.stroke();
 
   ctx.fillStyle = "#0A3D73";
-  ctx.font = "bold 13px Sans-Serif";
+  ctx.font = "bold 14px Sans-Serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
+  // Axis Labels
+  ctx.fillText("x", -radius - 5, 5); // Horizontal X
+  ctx.fillText("y", 5, -radius + 5); // Vertical Y
+
+  // Angle Text
+  // Position in the middle of the arc
+  const midRad = Math.PI + rad * 0.5;
+
+  // Display the input slope angle (e.g. 70)
   ctx.fillText(
     `${Math.round(clamped)}°`,
-    Math.cos(rad * 0.5) * radius * 0.95 - 12,
-    Math.sin(rad * 0.5) * radius * 0.95 - 6
+    Math.cos(midRad) * radius * 0.7,
+    Math.sin(midRad) * radius * 0.7
   );
 
   ctx.restore();
@@ -822,6 +859,7 @@ function drawSlideBody(ctx, geom) {
   } = geom;
 
 
+
   const sampleCount = 28;
   const samples = [];
   for (let i = 0; i <= sampleCount; i++) {
@@ -904,6 +942,7 @@ function drawSlideBody(ctx, geom) {
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
+
 
 
   // 入口圆弧
