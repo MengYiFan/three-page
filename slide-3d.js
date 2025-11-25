@@ -1,7 +1,7 @@
 // 3D Slide Simulation using Three.js
 
 const slideState = {
-  currentAngle: 40,
+  currentAngle: 35,
   isSliding: false,
   isPaused: false,
   pauseUntil: 0,
@@ -21,7 +21,7 @@ const LOW_ANGLE_MAX_VELOCITY = 1.5;
 
 const PRESET_ANGLES = {
   easy: 10,
-  medium: 40,
+  medium: 35,
   hard: 70
 };
 
@@ -779,7 +779,7 @@ function assessSafety(angle) {
 
   if (angle <= 10) {
     level = { label: "过缓", class: "bg-sky-500", summary: "会缓慢滑动，在中段短暂停顿后继续。" };
-  } else if (angle <= 40) {
+  } else if (angle <= 35) {
     level = { label: "安全适中", class: "bg-emerald-500", summary: "适合儿童玩耍的安全角度。" };
   } else if (angle <= 50) {
     level = { label: "偏陡", class: "bg-amber-500", summary: "速度较快，需注意安全。" };
@@ -792,7 +792,7 @@ function assessSafety(angle) {
 
   if (dom.feedback) {
     dom.feedback.textContent = `当前角度 ${angle}° - ${level.summary}`;
-    dom.feedback.className = angle > 40 ? "feedback incorrect" : "feedback correct";
+    dom.feedback.className = angle > 35 ? "feedback incorrect" : "feedback correct";
   }
 }
 
