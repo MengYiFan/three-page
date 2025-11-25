@@ -10,14 +10,14 @@ const slideState = {
   t: 0, // Progress along the path (0 to 1)
   velocity: 0,
   slideLength: 15, // Unified slope length (meters/units)
-  gravity: 100, // High gravity for dangerous speed at steep angles
+  gravity: 35, // Lower gravity to reduce runaway speed
   frictionCoef: 0.15, // Base friction (allows sliding at > 10 degrees)
-  dragCoef: 0.01
+  dragCoef: 0.02 // Higher air drag to slow the descent
 };
 
 // Low-angle behavior tuning
 const LOW_ANGLE_SPEED_SCALE = 0.2;
-const LOW_ANGLE_MAX_VELOCITY = 1.5;
+const LOW_ANGLE_MAX_VELOCITY = 1.8;
 
 const PRESET_ANGLES = {
   easy: 10,
