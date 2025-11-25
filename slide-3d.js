@@ -3,6 +3,10 @@
 const slideState = {
   currentAngle: 40,
   isSliding: false,
+  isPaused: false,
+  pauseUntil: 0,
+  pauseTriggered: false,
+  lowAngleMode: false,
   t: 0, // Progress along the path (0 to 1)
   velocity: 0,
   slideLength: 15, // Unified slope length (meters/units)
@@ -10,6 +14,10 @@ const slideState = {
   frictionCoef: 0.15, // Base friction (allows sliding at > 10 degrees)
   dragCoef: 0.01
 };
+
+// Low-angle behavior tuning
+const LOW_ANGLE_SPEED_SCALE = 0.2;
+const LOW_ANGLE_MAX_VELOCITY = 1.5;
 
 const PRESET_ANGLES = {
   easy: 10,
@@ -561,6 +569,9 @@ function resetCharacter() {
   slideState.t = 0;
   slideState.velocity = 0;
   slideState.isSliding = false;
+  slideState.isPaused = false;
+  slideState.pauseUntil = 0;
+  slideState.pauseTriggered = false;
   updateCharacterPosition();
 }
 
@@ -592,6 +603,27 @@ function animate(time) {
   const dt = (time - lastTime) / 1000;
   lastTime = time;
 
+  // Low-angle mid-slide pause control
+  if (slideState.isSliding && slideState.lowAngleMode) {
+    if (!slideState.pauseTriggered && slideState.t >= 0.5) {
+      slideState.isPaused = true;
+      slideState.pauseTriggered = true;
+      slideState.pauseUntil = time + 1000; // Pause for 2 seconds
+      slideState.velocity = 0;
+    }
+
+    if (slideState.isPaused) {
+      if (time >= slideState.pauseUntil) {
+        slideState.isPaused = false;
+        lastTime = time; // Reset timing to avoid a dt spike after pause
+      } else {
+        if (controls) controls.update();
+        renderer.render(scene, camera);
+        return;
+      }
+    }
+  }
+
   if (slideState.isSliding) {
     // Physics Step
     // 1. Get slope angle at current t
@@ -621,6 +653,11 @@ function animate(time) {
 
     let accel = gravityForce - frictionForce;
 
+    // Keep low-angle runs very gentle
+    if (slideState.lowAngleMode) {
+      accel *= LOW_ANGLE_SPEED_SCALE;
+    }
+
     // Remove artificial angle scaling to restore Newtonian physics
     // const angleFactor = slideState.currentAngle / 90;
     // accel *= angleFactor;
@@ -636,6 +673,11 @@ function animate(time) {
 
     // 3. Update Velocity
     slideState.velocity += accel * dt;
+
+    if (slideState.lowAngleMode && slideState.velocity > LOW_ANGLE_MAX_VELOCITY) {
+      slideState.velocity = LOW_ANGLE_MAX_VELOCITY;
+    }
+
     if (slideState.velocity < 0) slideState.velocity = 0;
 
     // 4. Update Position (t)
@@ -651,6 +693,9 @@ function animate(time) {
     if (slideState.t >= 1) {
       slideState.t = 0; // Loop
       slideState.velocity = 0; // Reset speed for loop
+      slideState.pauseTriggered = false;
+      slideState.isPaused = false;
+      slideState.pauseUntil = 0;
       // Optional: Pause at top?
     }
 
@@ -712,12 +757,9 @@ function setAngle(angle) {
   updateSlideGeometry(angle);
   resetCharacter();
 
-  // Dynamic Friction: Explicitly prevent sliding for <= 10 degrees
-  if (angle <= 10) {
-    slideState.frictionCoef = 1.0; // High friction, won't move
-  } else {
-    slideState.frictionCoef = 0.15; // Low friction, ensures sliding at 15 degrees
-  }
+  // Dynamic friction: allow slow movement even on shallow slopes
+  slideState.lowAngleMode = angle <= 10;
+  slideState.frictionCoef = slideState.lowAngleMode ? 0.05 : 0.15; // Keep movement for low angles
 
   // Update Safety Badge (Preview)
   assessSafety(angle);
@@ -727,13 +769,16 @@ function startSlide() {
   slideState.isSliding = true;
   slideState.velocity = 0;
   slideState.t = 0;
+  slideState.isPaused = false;
+  slideState.pauseUntil = 0;
+  slideState.pauseTriggered = false;
 }
 
 function assessSafety(angle) {
   let level = { label: "未知", class: "bg-slate-400", summary: "" };
 
   if (angle <= 10) {
-    level = { label: "过缓", class: "bg-sky-500", summary: "因为摩擦力原因，无法滑动。" };
+    level = { label: "过缓", class: "bg-sky-500", summary: "会缓慢滑动，在中段短暂停顿后继续。" };
   } else if (angle <= 40) {
     level = { label: "安全适中", class: "bg-emerald-500", summary: "适合儿童玩耍的安全角度。" };
   } else if (angle <= 50) {
