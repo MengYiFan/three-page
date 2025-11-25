@@ -7,23 +7,83 @@ const slideState = {
   pauseUntil: 0,
   pauseTriggered: false,
   lowAngleMode: false,
+  pauseMidway: false,
+  tierKey: 'moderate',
+  dangerMode: false,
   t: 0, // Progress along the path (0 to 1)
   velocity: 0,
   slideLength: 15, // Unified slope length (meters/units)
-  gravity: 35, // Lower gravity to reduce runaway speed
+  gravity: 35, // Gravity constant (tuned down to avoid runaway speed)
   frictionCoef: 0.15, // Base friction (allows sliding at > 10 degrees)
-  dragCoef: 0.02 // Higher air drag to slow the descent
+  dragCoef: 0.02, // Higher air drag to slow the descent
+  accelScale: 1 // Tier-based acceleration multiplier
 };
 
 // Low-angle behavior tuning
-const LOW_ANGLE_SPEED_SCALE = 0.2;
 const LOW_ANGLE_MAX_VELOCITY = 1.8;
+
+// Tiered angle buckets to keep acceleration consistent within each band
+const ANGLE_TIERS = [
+  {
+    key: 'gentle',
+    maxAngle: 10,
+    accelScale: 0.2,
+    friction: 0.05,
+    drag: 0.02,
+    safety: { label: "过缓", class: "bg-sky-500", summary: "缓慢滑动，中段短暂停顿后继续。" },
+    pauseMid: true
+  },
+  {
+    key: 'moderate',
+    maxAngle: 35,
+    accelScale: 0.32,
+    friction: 0.15,
+    drag: 0.022,
+    safety: { label: "安全适中", class: "bg-emerald-500", summary: "速度平稳，不会过快。" }
+  },
+  {
+    key: 'steep',
+    maxAngle: 50,
+    accelScale: 0.8,
+    friction: 0.15,
+    drag: 0.02,
+    safety: { label: "偏陡", class: "bg-amber-500", summary: "速度变快，需注意姿势与刹停。" }
+  },
+  {
+    key: 'danger',
+    maxAngle: Infinity,
+    accelScale: 1.0,
+    friction: 0.12,
+    drag: 0.018,
+    safety: { label: "危险", class: "bg-rose-500", summary: "角度过陡，速度极快且风险高！" },
+    danger: true
+  }
+];
 
 const PRESET_ANGLES = {
   easy: 10,
   medium: 35,
   hard: 70
 };
+
+function getTierConfig(angle) {
+  return ANGLE_TIERS.find(tier => angle <= tier.maxAngle) || ANGLE_TIERS[ANGLE_TIERS.length - 1];
+}
+
+function applyTierConfig(angle) {
+  const tier = getTierConfig(angle);
+  slideState.lowAngleMode = tier.key === 'gentle';
+  slideState.pauseMidway = !!tier.pauseMid;
+  slideState.tierKey = tier.key;
+  slideState.dangerMode = !!tier.danger;
+  slideState.frictionCoef = tier.friction;
+  slideState.dragCoef = tier.drag;
+  slideState.accelScale = tier.accelScale;
+  return tier;
+}
+
+// Initialize tier-dependent values for the default angle
+applyTierConfig(slideState.currentAngle);
 
 // Three.js Global Variables
 let scene, camera, renderer, controls;
@@ -603,12 +663,12 @@ function animate(time) {
   const dt = (time - lastTime) / 1000;
   lastTime = time;
 
-  // Low-angle mid-slide pause control
-  if (slideState.isSliding && slideState.lowAngleMode) {
+  // Mid-slide pause control (currently for low-angle tier)
+  if (slideState.isSliding && slideState.pauseMidway) {
     if (!slideState.pauseTriggered && slideState.t >= 0.5) {
       slideState.isPaused = true;
       slideState.pauseTriggered = true;
-      slideState.pauseUntil = time + 1000; // Pause for 2 seconds
+      slideState.pauseUntil = time + 1000; // Pause briefly (1s)
       slideState.velocity = 0;
     }
 
@@ -653,10 +713,8 @@ function animate(time) {
 
     let accel = gravityForce - frictionForce;
 
-    // Keep low-angle runs very gentle
-    if (slideState.lowAngleMode) {
-      accel *= LOW_ANGLE_SPEED_SCALE;
-    }
+    // Tier-based acceleration scaling to keep each band consistent
+    accel *= slideState.accelScale;
 
     // Remove artificial angle scaling to restore Newtonian physics
     // const angleFactor = slideState.currentAngle / 90;
@@ -754,15 +812,12 @@ function setAngle(angle) {
   dom.generateBtn.disabled = false;
 
   // Update Visuals
+  const tier = applyTierConfig(angle);
   updateSlideGeometry(angle);
   resetCharacter();
 
-  // Dynamic friction: allow slow movement even on shallow slopes
-  slideState.lowAngleMode = angle <= 10;
-  slideState.frictionCoef = slideState.lowAngleMode ? 0.05 : 0.15; // Keep movement for low angles
-
   // Update Safety Badge (Preview)
-  assessSafety(angle);
+  assessSafety(angle, tier);
 }
 
 function startSlide() {
@@ -774,25 +829,17 @@ function startSlide() {
   slideState.pauseTriggered = false;
 }
 
-function assessSafety(angle) {
-  let level = { label: "未知", class: "bg-slate-400", summary: "" };
-
-  if (angle <= 10) {
-    level = { label: "过缓", class: "bg-sky-500", summary: "会缓慢滑动，在中段短暂停顿后继续。" };
-  } else if (angle <= 35) {
-    level = { label: "安全适中", class: "bg-emerald-500", summary: "适合儿童玩耍的安全角度。" };
-  } else if (angle <= 50) {
-    level = { label: "偏陡", class: "bg-amber-500", summary: "速度较快，需注意安全。" };
-  } else {
-    level = { label: "危险", class: "bg-rose-500", summary: "滑动速度很快，很危险。" };
-  }
+function assessSafety(angle, tier = getTierConfig(angle)) {
+  const level = tier?.safety || { label: "未知", class: "bg-slate-400", summary: "" };
+  const isDanger = !!tier?.danger;
+  const isCaution = tier?.key === 'steep';
 
   dom.safetyBadge.textContent = level.label;
   dom.safetyBadge.className = `safety-badge angle-level-badge inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-white shadow ${level.class}`;
 
   if (dom.feedback) {
     dom.feedback.textContent = `当前角度 ${angle}° - ${level.summary}`;
-    dom.feedback.className = angle > 35 ? "feedback incorrect" : "feedback correct";
+    dom.feedback.className = (isDanger || isCaution) ? "feedback incorrect" : "feedback correct";
   }
 }
 
