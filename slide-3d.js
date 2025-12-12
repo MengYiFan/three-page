@@ -26,11 +26,11 @@ const LOW_ANGLE_MAX_VELOCITY = 1.8;
 const ANGLE_TIERS = [
   {
     key: 'gentle',
-    maxAngle: 10,
+    maxAngle: 15,
     accelScale: 0.2,
     friction: 0.05,
     drag: 0.02,
-    safety: { label: "过缓", class: "bg-sky-500", summary: "缓慢滑动，中段短暂停顿后继续。" },
+    safety: { label: "过缓", class: "bg-sky-500", summary: "缓慢滑动，在中段暂停表示角度太小，不足于滑动。" },
     pauseMid: true
   },
   {
@@ -662,6 +662,15 @@ function animate(time) {
 
   const dt = (time - lastTime) / 1000;
   lastTime = time;
+
+  // STOP Logic for Low Angles (<= 15 degrees)
+  // If angle is 15 or less, stop permanently at the middle (50%).
+  if (slideState.isSliding && slideState.currentAngle <= 15 && slideState.t >= 0.5) {
+    slideState.t = 0.5;
+    slideState.velocity = 0;
+    slideState.isSliding = false;
+    updateCharacterPosition();
+  }
 
   // Mid-slide pause control (currently for low-angle tier)
   if (slideState.isSliding && slideState.pauseMidway) {
